@@ -34,6 +34,7 @@ import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
+import { useEndlessPlay } from './useEndlessPlay'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -124,6 +125,8 @@ const Player = () => {
       decisionService.prefetchDecisions(nextSongIds)
     }
   }, [playerState.queue, playerState.savedPlayIndex])
+
+  useEndlessPlay(playerState)
 
   const visible = authenticated && playerState.queue.length > 0
   const isRadio = playerState.current?.isRadio || false

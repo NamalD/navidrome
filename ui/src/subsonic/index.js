@@ -127,6 +127,10 @@ const getSimilarSongs2 = (id, count = 100) => {
   return httpClient(url('getSimilarSongs2', id, { count }))
 }
 
+const getRandomSongs = (size = 10) => {
+  return httpClient(url('getRandomSongs', null, { size }))
+}
+
 const getTopSongs = (artist, count = 50) => {
   return httpClient(url('getTopSongs', null, { artist, count }))
 }
@@ -160,4 +164,5 @@ export default {
   getArtistInfo,
   getTopSongs,
   getSimilarSongs2,
+  getRandomSongs,
 }

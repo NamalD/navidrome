@@ -1,12 +1,12 @@
 import React, { useCallback } from 'react'
-import { useDispatch } from 'react-redux'
-import { useGetOne } from 'react-admin'
+import { useDispatch, useSelector } from 'react-redux'
+import { useGetOne, useTranslate } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import IconButton from '@material-ui/core/IconButton'
 import { useMediaQuery } from '@material-ui/core'
-import { RiSaveLine } from 'react-icons/ri'
+import { RiInfinityLine, RiSaveLine } from 'react-icons/ri'
 import { LoveButton, useToggleLove } from '../common'
-import { openSaveQueueDialog } from '../actions'
+import { openSaveQueueDialog, setEndlessPlay } from '../actions'
 import { keyMap } from '../hotkeys'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -57,6 +57,10 @@ const useStyles = makeStyles((theme) => ({
 
 const PlayerToolbar = ({ id, isRadio }) => {
   const dispatch = useDispatch()
+  const translate = useTranslate()
+  const endlessPlay = useSelector(
+    (state) => state.settings.endlessPlay || false,
+  )
   const { data, loading } = useGetOne('song', id, { enabled: !!id && !isRadio })
   const [toggleLove, toggling] = useToggleLove('song', data)
   const isDesktop = useMediaQuery('(min-width:810px)')
@@ -74,6 +78,14 @@ const PlayerToolbar = ({ id, isRadio }) => {
     [dispatch],
   )
 
+  const handleToggleEndlessPlay = useCallback(
+    (e) => {
+      dispatch(setEndlessPlay(!endlessPlay))
+      e.stopPropagation()
+    },
+    [dispatch, endlessPlay],
+  )
+
   const buttonClass = isDesktop ? classes.button : classes.mobileButton
   const listItemClass = isDesktop ? classes.toolbar : classes.mobileListItem
 
@@ -86,6 +98,23 @@ const PlayerToolbar = ({ id, isRadio }) => {
       className={buttonClass}
     >
       <RiSaveLine className={!isDesktop ? classes.mobileIcon : undefined} />
+    </IconButton>
+  )
+
+  const endlessPlayLabel = translate('player.endlessPlayText')
+  const endlessPlayButton = (
+    <IconButton
+      size={isDesktop ? 'small' : undefined}
+      onClick={handleToggleEndlessPlay}
+      disabled={isRadio}
+      color={endlessPlay ? 'primary' : 'default'}
+      title={endlessPlayLabel}
+      aria-label={endlessPlayLabel}
+      aria-pressed={endlessPlay}
+      data-testid="endless-play-button"
+      className={buttonClass}
+    >
+      <RiInfinityLine className={!isDesktop ? classes.mobileIcon : undefined} />
     </IconButton>
   )
 
@@ -104,11 +133,13 @@ const PlayerToolbar = ({ id, isRadio }) => {
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {isDesktop ? (
         <li className={`${listItemClass} item`}>
+          {endlessPlayButton}
           {saveQueueButton}
           {loveButton}
         </li>
       ) : (
         <>
+          <li className={`${listItemClass} item`}>{endlessPlayButton}</li>
           <li className={`${listItemClass} item`}>{saveQueueButton}</li>
           <li className={`${listItemClass} item`}>{loveButton}</li>
         </>

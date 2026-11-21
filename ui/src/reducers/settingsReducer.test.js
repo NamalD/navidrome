@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { settingsReducer } from './settingsReducer'
 import {
   SET_SIDEBAR_PLAYLISTS_FAVOURITES,
+  setEndlessPlay,
   setSidebarPlaylistsOnlyFavourites,
 } from '../actions'
 
@@ -32,5 +33,20 @@ describe('settingsReducer', () => {
     expect(off.sidebarPlaylistsOnlyFavourites).toBe(false)
     expect(off.notifications).toEqual(initial.notifications)
     expect(off.toggleableFields).toEqual(initial.toggleableFields)
+  })
+
+  it('defaults endlessPlay to false', () => {
+    const state = settingsReducer(undefined, { type: 'UNKNOWN' })
+    expect(state.endlessPlay).toBe(false)
+  })
+
+  it('toggles endlessPlay and preserves other settings', () => {
+    const initial = settingsReducer(undefined, { type: 'UNKNOWN' })
+    const on = settingsReducer(initial, setEndlessPlay(true))
+    expect(on.endlessPlay).toBe(true)
+    expect(on.notifications).toEqual(initial.notifications)
+
+    const off = settingsReducer(on, setEndlessPlay(false))
+    expect(off.endlessPlay).toBe(false)
   })
 })

@@ -1,4 +1,5 @@
 import {
+  SET_ENDLESS_PLAY,
   SET_NOTIFICATIONS_STATE,
   SET_OMITTED_FIELDS,
   SET_SIDEBAR_PLAYLISTS_FAVOURITES,
@@ -10,6 +11,7 @@ const initialState = {
   toggleableFields: {},
   omittedFields: {},
   sidebarPlaylistsOnlyFavourites: false,
+  endlessPlay: false,
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -40,6 +42,11 @@ export const settingsReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         sidebarPlaylistsOnlyFavourites: data,
+      }
+    case SET_ENDLESS_PLAY:
+      return {
+        ...previousState,
+        endlessPlay: data,
       }
     default:
       return previousState

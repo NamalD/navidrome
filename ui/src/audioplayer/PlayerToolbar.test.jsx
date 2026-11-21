@@ -2,9 +2,9 @@ import React from 'react'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { useMediaQuery } from '@material-ui/core'
 import { useGetOne } from 'react-admin'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { useToggleLove } from '../common'
-import { openSaveQueueDialog } from '../actions'
+import { openSaveQueueDialog, setEndlessPlay } from '../actions'
 import PlayerToolbar from './PlayerToolbar'
 
 // Mock dependencies
@@ -18,10 +18,12 @@ vi.mock('@material-ui/core', async () => {
 
 vi.mock('react-admin', () => ({
   useGetOne: vi.fn(),
+  useTranslate: () => (key) => key,
 }))
 
 vi.mock('react-redux', () => ({
   useDispatch: vi.fn(),
+  useSelector: vi.fn(),
 }))
 
 vi.mock('../common', () => ({
@@ -35,6 +37,7 @@ vi.mock('../common', () => ({
 
 vi.mock('../actions', () => ({
   openSaveQueueDialog: vi.fn(),
+  setEndlessPlay: vi.fn(),
 }))
 
 vi.mock('react-hotkeys', () => ({
@@ -45,6 +48,7 @@ describe('<PlayerToolbar />', () => {
   const mockToggleLove = vi.fn()
   const mockDispatch = vi.fn()
   const mockSongData = { id: 'song-1', name: 'Test Song', starred: false }
+  let settings
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -52,6 +56,12 @@ describe('<PlayerToolbar />', () => {
     useToggleLove.mockReturnValue([mockToggleLove, false])
     useDispatch.mockReturnValue(mockDispatch)
     openSaveQueueDialog.mockReturnValue({ type: 'OPEN_SAVE_QUEUE_DIALOG' })
+    setEndlessPlay.mockImplementation((enabled) => ({
+      type: 'SET_ENDLESS_PLAY',
+      data: enabled,
+    }))
+    settings = { endlessPlay: false }
+    useSelector.mockImplementation((selector) => selector({ settings }))
   })
 
   afterEach(cleanup)
@@ -61,14 +71,15 @@ describe('<PlayerToolbar />', () => {
       useMediaQuery.mockReturnValue(true) // isDesktop = true
     })
 
-    it('renders desktop toolbar with both buttons', () => {
+    it('renders desktop toolbar with all buttons', () => {
       render(<PlayerToolbar id="song-1" />)
 
-      // Both buttons should be in a single list item
+      // All buttons should be in a single list item
       const listItems = screen.getAllByRole('listitem')
       expect(listItems).toHaveLength(1)
 
-      // Verify both buttons are rendered
+      // Verify all buttons are rendered
+      expect(screen.getByTestId('endless-play-button')).toBeInTheDocument()
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
 
@@ -90,6 +101,39 @@ describe('<PlayerToolbar />', () => {
 
       const loveButton = screen.getByTestId('love-button')
       expect(loveButton).toBeDisabled()
+    })
+
+    it('turns endless play on when the button is clicked', () => {
+      render(<PlayerToolbar id="song-1" />)
+
+      const button = screen.getByTestId('endless-play-button')
+      expect(button).toHaveAttribute('aria-pressed', 'false')
+      fireEvent.click(button)
+
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: 'SET_ENDLESS_PLAY',
+        data: true,
+      })
+    })
+
+    it('turns endless play off when it is already on', () => {
+      settings.endlessPlay = true
+      render(<PlayerToolbar id="song-1" />)
+
+      const button = screen.getByTestId('endless-play-button')
+      expect(button).toHaveAttribute('aria-pressed', 'true')
+      fireEvent.click(button)
+
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: 'SET_ENDLESS_PLAY',
+        data: false,
+      })
+    })
+
+    it('disables endless play button when isRadio is true', () => {
+      render(<PlayerToolbar id="song-1" isRadio={true} />)
+
+      expect(screen.getByTestId('endless-play-button')).toBeDisabled()
     })
 
     it('opens save queue dialog when save button is clicked', () => {
@@ -114,15 +158,17 @@ describe('<PlayerToolbar />', () => {
 
       // Each button should be in its own list item
       const listItems = screen.getAllByRole('listitem')
-      expect(listItems).toHaveLength(2)
+      expect(listItems).toHaveLength(3)
 
-      // Verify both buttons are rendered
+      // Verify all buttons are rendered
+      expect(screen.getByTestId('endless-play-button')).toBeInTheDocument()
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
 
       // Verify mobile classes are applied
       expect(listItems[0].className).toContain('mobileListItem')
       expect(listItems[1].className).toContain('mobileListItem')
+      expect(listItems[2].className).toContain('mobileListItem')
     })
 
     it('disables save queue button when isRadio is true', () => {
