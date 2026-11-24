@@ -1,6 +1,7 @@
-# This fork's own pipeline (upstream's are disabled here). Checks the web UI, builds the Docker image into
-# ghcr.io/namald/navidrome:<upstream version>-<short sha>, and deploys that tag to the VPS. The VPS key can only run the
-# deploy script there, which pulls the tag, restarts Navidrome, and goes back to the previous tag if it doesn't answer.
+# This fork's own pipeline (upstream's are disabled here). Checks the web UI and the Go code, builds the Docker image
+# into ghcr.io/namald/navidrome:<upstream version>-<short sha>, and deploys that tag to the VPS. The VPS key can only
+# run the deploy script there, which pulls the tag, restarts Navidrome, and goes back to the previous tag if it doesn't
+# answer.
 # Pushing to `main` runs it. Run it by hand with a tag to roll back to that image without building. See FORK.md.
 name: "Fork: Build and Deploy"
 
@@ -47,6 +48,12 @@ jobs:
           npm run lint
           npm run check-formatting
           npm test
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Test the Go code
+        # The same packages and tags as upstream's pipeline; the plugins suite is left out as it is there.
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 $(go list ./... | grep -v '/plugins$')
       - name: Work out the version
         id: version
         run: |

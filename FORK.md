@@ -16,13 +16,17 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
 - **Endless play.** The ∞ button in the player bar. While it is on, the queue is extended when its last track
   starts: 10 songs similar to that track that are not queued yet, topped up with random ones, so playback never
   stops. The setting is per browser. Code: `ui/src/audioplayer/useEndlessPlay.js`.
+- **Lyrics sidebar.** The lyrics button in the player bar opens a sidebar that loads lyrics through
+  `getLyricsBySongId`, so sidecar files and lyrics plugins show up, not only embedded tags. It is upstream's
+  pull request #5733 squashed into one commit while that is still open there; drop our commit when a release
+  we take includes it. Code: `ui/src/audioplayer/usePlayerLyrics.jsx` and the `Lyrics*` files beside it.
 
 ## Build and deploy
 
-`.github/workflows/fork-deploy.yml` checks the web UI (lint, formatting, tests), builds the Docker image as
-`ghcr.io/namald/navidrome:<upstream version>-<short sha>` and deploys that tag to the VPS, which rolls back if
-Navidrome doesn't answer. To roll back by hand, run the workflow with an older tag. Upstream's own workflows are
-disabled in this repository. The workflow does not run the Go tests; add them to it with the first backend change.
+`.github/workflows/fork-deploy.yml` checks the web UI (lint, formatting, tests), runs the Go tests, builds the
+Docker image as `ghcr.io/namald/navidrome:<upstream version>-<short sha>` and deploys that tag to the VPS, which
+rolls back if Navidrome doesn't answer. To roll back by hand, run the workflow with an older tag. Upstream's own workflows are
+disabled in this repository.
 
 ## Taking a new upstream release
 
