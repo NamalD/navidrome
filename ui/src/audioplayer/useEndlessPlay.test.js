@@ -171,7 +171,6 @@ describe('useEndlessPlay', () => {
 
   it.each([
     ['the setting is off', () => (settings.endlessPlay = false), {}],
-    ['shuffle mode is on', () => {}, { mode: 'shufflePlay' }],
     ['single loop mode is on', () => {}, { mode: 'singleLoop' }],
   ])('does nothing when %s', async (_, setup, extra) => {
     setup()

@@ -41,6 +41,12 @@ const useStyle = makeStyles(
           animation: 'none',
         },
       },
+      // The player gives every mobile toolbar icon the same colour, which
+      // hides whether a toggle (shuffle, repeat, ...) is on
+      '& .react-jinke-music-player-mobile-operation .items .item .MuiIconButton-colorPrimary svg':
+        {
+          color: 'inherit',
+        },
       '& .progress-bar-content': {
         display: 'flex',
         flexDirection: 'column',

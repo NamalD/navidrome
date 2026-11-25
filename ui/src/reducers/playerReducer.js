@@ -11,6 +11,7 @@ import {
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
   PLAYER_SET_MODE,
+  PLAYER_SET_SHUFFLE,
   PLAYER_REFRESH_QUEUE,
 } from '../actions'
 import config from '../config'
@@ -98,19 +99,50 @@ const mapToAudioLists = (item) => {
   }
 }
 
-const reduceClearQueue = () => ({ ...initialState, clear: true })
+// Moves the track at `index` to the front and shuffles the rest behind it
+const shuffleQueue = (queue, index) => {
+  const rest = queue.filter((_, idx) => idx !== index)
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[rest[i], rest[j]] = [rest[j], rest[i]]
+  }
+  return queue[index] ? [queue[index], ...rest] : rest
+}
+
+// Puts the queue back in the order it had before it was shuffled. Tracks
+// queued after that go to the end, in the order they are in now.
+const unshuffleQueue = (queue, unshuffled = []) => {
+  const position = new Map(unshuffled.map((uuid, idx) => [uuid, idx]))
+  const rank = (item) => position.get(item.uuid) ?? unshuffled.length
+  return [...queue].sort((a, b) => rank(a) - rank(b))
+}
+
+// The repeat and shuffle choices outlive the queue
+const reduceClearQueue = (state) => ({
+  ...initialState,
+  mode: state.mode,
+  shuffle: state.shuffle,
+  clear: true,
+})
 
 const reducePlayTracks = (state, { data, id }) => {
   let playIndex = 0
-  const queue = Object.keys(data).map((key, idx) => {
+  let queue = Object.keys(data).map((key, idx) => {
     if (key === id) {
       playIndex = idx
     }
     return mapToAudioLists(data[key])
   })
+  let unshuffled
+  if (state.shuffle) {
+    unshuffled = queue.map((item) => item.uuid)
+    queue = shuffleQueue(queue, playIndex)
+    playIndex = 0
+  }
   return {
     ...state,
     queue,
+    unshuffled,
     playIndex,
     clear: true,
   }
@@ -208,11 +240,37 @@ const reduceMode = (state, { data: { mode } }) => {
   }
 }
 
+// Shuffling reorders the queue itself, so the queue panel and the next/previous
+// buttons follow the shuffled order. The track that is playing (or about to
+// play, when a selection is pending) keeps playing.
+const reduceShuffle = (state, { data: { shuffle } }) => {
+  if (shuffle === !!state.shuffle) {
+    return state
+  }
+  const pending = state.playIndex != null
+  const anchor = pending
+    ? state.playIndex
+    : state.queue.findIndex((item) => item.uuid === state.current?.uuid)
+  const queue = shuffle
+    ? shuffleQueue(state.queue, anchor)
+    : unshuffleQueue(state.queue, state.unshuffled)
+  const anchorIndex = queue.indexOf(state.queue[anchor])
+  return {
+    ...state,
+    shuffle,
+    unshuffled: shuffle ? state.queue.map((item) => item.uuid) : undefined,
+    queue,
+    clear: true,
+    playIndex: pending && anchorIndex >= 0 ? anchorIndex : state.playIndex,
+    savedPlayIndex: anchorIndex >= 0 ? anchorIndex : state.savedPlayIndex,
+  }
+}
+
 export const playerReducer = (previousState = initialState, payload) => {
   const { type } = payload
   switch (type) {
     case PLAYER_CLEAR_QUEUE:
-      return reduceClearQueue()
+      return reduceClearQueue(previousState)
     case PLAYER_PLAY_TRACKS:
       return reducePlayTracks(previousState, payload)
     case PLAYER_SET_TRACK:
@@ -229,6 +287,8 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceCurrent(previousState, payload)
     case PLAYER_SET_MODE:
       return reduceMode(previousState, payload)
+    case PLAYER_SET_SHUFFLE:
+      return reduceShuffle(previousState, payload)
     case PLAYER_REFRESH_QUEUE: {
       const resolvedUrls = payload.data || {}
       return {

@@ -4,7 +4,12 @@ import { useMediaQuery } from '@material-ui/core'
 import { useGetOne } from 'react-admin'
 import { useDispatch, useSelector } from 'react-redux'
 import { useToggleLove } from '../common'
-import { openSaveQueueDialog, setEndlessPlay } from '../actions'
+import {
+  openSaveQueueDialog,
+  setEndlessPlay,
+  setPlayMode,
+  setShuffle,
+} from '../actions'
 import PlayerToolbar from './PlayerToolbar'
 
 // Mock dependencies
@@ -38,6 +43,8 @@ vi.mock('../common', () => ({
 vi.mock('../actions', () => ({
   openSaveQueueDialog: vi.fn(),
   setEndlessPlay: vi.fn(),
+  setPlayMode: vi.fn(),
+  setShuffle: vi.fn(),
 }))
 
 vi.mock('react-hotkeys', () => ({
@@ -49,6 +56,7 @@ describe('<PlayerToolbar />', () => {
   const mockDispatch = vi.fn()
   const mockSongData = { id: 'song-1', name: 'Test Song', starred: false }
   let settings
+  let player
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -60,8 +68,17 @@ describe('<PlayerToolbar />', () => {
       type: 'SET_ENDLESS_PLAY',
       data: enabled,
     }))
+    setPlayMode.mockImplementation((mode) => ({
+      type: 'PLAYER_SET_MODE',
+      data: { mode },
+    }))
+    setShuffle.mockImplementation((shuffle) => ({
+      type: 'PLAYER_SET_SHUFFLE',
+      data: { shuffle },
+    }))
     settings = { endlessPlay: false }
-    useSelector.mockImplementation((selector) => selector({ settings }))
+    player = {}
+    useSelector.mockImplementation((selector) => selector({ settings, player }))
   })
 
   afterEach(cleanup)
@@ -79,6 +96,8 @@ describe('<PlayerToolbar />', () => {
       expect(listItems).toHaveLength(1)
 
       // Verify all buttons are rendered
+      expect(screen.getByTestId('shuffle-button')).toBeInTheDocument()
+      expect(screen.getByTestId('repeat-button')).toBeInTheDocument()
       expect(screen.getByTestId('endless-play-button')).toBeInTheDocument()
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
@@ -113,6 +132,59 @@ describe('<PlayerToolbar />', () => {
         type: 'SET_ENDLESS_PLAY',
         data: false,
       })
+    })
+
+    it.each([
+      [false, true],
+      [true, false],
+    ])('toggles shuffle from %s to %s', (current, next) => {
+      player.shuffle = current
+      render(<PlayerToolbar id="song-1" />)
+
+      const button = screen.getByTestId('shuffle-button')
+      expect(button).toHaveAttribute('aria-pressed', String(current))
+      fireEvent.click(button)
+
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: 'PLAYER_SET_SHUFFLE',
+        data: { shuffle: next },
+      })
+    })
+
+    it.each([
+      [undefined, 'orderLoop'],
+      ['order', 'orderLoop'],
+      ['orderLoop', 'singleLoop'],
+      ['singleLoop', 'order'],
+    ])('cycles repeat from %s to %s', (current, next) => {
+      player.mode = current
+      render(<PlayerToolbar id="song-1" />)
+
+      const button = screen.getByTestId('repeat-button')
+      expect(button).toHaveAttribute('data-mode', current || 'order')
+      fireEvent.click(button)
+
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: 'PLAYER_SET_MODE',
+        data: { mode: next },
+      })
+    })
+
+    it('leaves repeat alone when shuffle is toggled', () => {
+      player.mode = 'singleLoop'
+      render(<PlayerToolbar id="song-1" />)
+
+      fireEvent.click(screen.getByTestId('shuffle-button'))
+
+      expect(mockDispatch).toHaveBeenCalledTimes(1)
+      expect(setPlayMode).not.toHaveBeenCalled()
+    })
+
+    it('disables shuffle and repeat buttons when isRadio is true', () => {
+      render(<PlayerToolbar id="song-1" isRadio={true} />)
+
+      expect(screen.getByTestId('shuffle-button')).toBeDisabled()
+      expect(screen.getByTestId('repeat-button')).toBeDisabled()
     })
 
     it('disables endless play button when isRadio is true', () => {
@@ -169,9 +241,11 @@ describe('<PlayerToolbar />', () => {
 
       // Each button should be in its own list item
       const listItems = screen.getAllByRole('listitem')
-      expect(listItems).toHaveLength(4)
+      expect(listItems).toHaveLength(6)
 
       // Verify all buttons are rendered
+      expect(screen.getByTestId('shuffle-button')).toBeInTheDocument()
+      expect(screen.getByTestId('repeat-button')).toBeInTheDocument()
       expect(screen.getByTestId('endless-play-button')).toBeInTheDocument()
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()

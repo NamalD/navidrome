@@ -251,6 +251,8 @@ const Player = () => {
       showDestroy: true,
       showDownload: false,
       showLyric: false,
+      // Replaced by the shuffle and repeat buttons in PlayerToolbar
+      showPlayMode: false,
       showReload: false,
       toggleMode: !isDesktop,
       glassBg: false,

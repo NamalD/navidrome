@@ -65,13 +65,12 @@ export const useEndlessPlay = (playerState) => {
   queueRef.current = queue
 
   const last = queue[queue.length - 1]
-  // In shuffle and single-loop modes the end of the queue is never reached
+  // In single-loop mode the end of the queue is never reached
   const isSeed =
     enabled &&
     !!current?.uuid &&
     !current.isRadio &&
     last?.uuid === current.uuid &&
-    mode !== 'shufflePlay' &&
     mode !== 'singleLoop'
   const seedUuid = isSeed ? current.uuid : null
   const seedId = isSeed ? current.trackId : null

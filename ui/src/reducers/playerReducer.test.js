@@ -4,6 +4,9 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
+  clearQueue,
+  playTracks,
+  setShuffle,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -222,6 +225,114 @@ describe('playerReducer', () => {
       const action = { type: PLAYER_REFRESH_QUEUE, data: {} }
       const result = playerReducer(state, action)
       expect(result.playIndex).toBe(0)
+    })
+  })
+
+  describe('shuffle', () => {
+    const track = (n) => ({
+      trackId: `s${n}`,
+      uuid: `u${n}`,
+      name: `Song ${n}`,
+    })
+    const tracks = Array.from({ length: 20 }, (_, n) => track(n))
+    const uuids = (state) => state.queue.map((item) => item.uuid)
+    const playing = (index, extra) => ({
+      queue: tracks,
+      current: tracks[index],
+      savedPlayIndex: index,
+      clear: false,
+      volume: 1,
+      ...extra,
+    })
+
+    it('moves the playing track first and shuffles the others behind it', () => {
+      const state = playerReducer(playing(7), setShuffle(true))
+
+      expect(state.shuffle).toBe(true)
+      expect(state.queue[0]).toBe(tracks[7])
+      expect(state.savedPlayIndex).toBe(0)
+      expect(uuids(state)).not.toEqual(uuids(playing(7)))
+      expect(uuids(state).sort()).toEqual(uuids(playing(7)).sort())
+      // Reorders the player's list without selecting another track
+      expect(state.clear).toBe(true)
+      expect(state.playIndex).toBeUndefined()
+    })
+
+    it('restores the original order around the playing track', () => {
+      const shuffled = playerReducer(playing(7), setShuffle(true))
+      const current = shuffled.queue[5]
+      const state = playerReducer(
+        { ...shuffled, current, savedPlayIndex: 5, clear: false },
+        setShuffle(false),
+      )
+
+      expect(state.shuffle).toBe(false)
+      expect(state.unshuffled).toBeUndefined()
+      expect(state.queue).toEqual(tracks)
+      expect(state.savedPlayIndex).toBe(tracks.indexOf(current))
+    })
+
+    it('keeps tracks queued while shuffled, after the original ones', () => {
+      const shuffled = playerReducer(playing(0), setShuffle(true))
+      const added = [track('x'), track('y')]
+      const queue = [shuffled.queue[0], added[0], ...shuffled.queue.slice(1)]
+      const state = playerReducer(
+        { ...shuffled, queue: [...queue, added[1]] },
+        setShuffle(false),
+      )
+
+      expect(state.queue).toEqual([...tracks, ...added])
+    })
+
+    it('follows a pending track selection instead of the old track', () => {
+      const state = playerReducer(
+        playing(7, { playIndex: 3, clear: true }),
+        setShuffle(true),
+      )
+
+      expect(state.queue[0]).toBe(tracks[3])
+      expect(state.playIndex).toBe(0)
+    })
+
+    it('does not touch the queue when the value does not change', () => {
+      const before = playing(7)
+      expect(playerReducer(before, setShuffle(false))).toBe(before)
+    })
+
+    it('shuffles newly played tracks behind the selected one', () => {
+      const data = Object.fromEntries(
+        tracks.map((item) => [
+          item.trackId,
+          { id: item.trackId, title: item.name },
+        ]),
+      )
+      const state = playerReducer(
+        { ...playing(0), shuffle: true },
+        playTracks(data, null, 's7'),
+      )
+
+      expect(state.playIndex).toBe(0)
+      expect(state.queue[0].trackId).toBe('s7')
+      expect(state.queue.map((item) => item.trackId)).not.toEqual(
+        tracks.map((item) => item.trackId),
+      )
+      const restored = playerReducer(state, setShuffle(false))
+      expect(restored.queue.map((item) => item.trackId)).toEqual(
+        tracks.map((item) => item.trackId),
+      )
+      expect(restored.playIndex).toBe(7)
+    })
+
+    it('keeps shuffle and repeat when the queue is cleared', () => {
+      const state = playerReducer(
+        playing(0, { shuffle: true, mode: 'orderLoop', unshuffled: ['u0'] }),
+        clearQueue(),
+      )
+
+      expect(state.queue).toEqual([])
+      expect(state.shuffle).toBe(true)
+      expect(state.mode).toBe('orderLoop')
+      expect(state.unshuffled).toBeUndefined()
     })
   })
 })

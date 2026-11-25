@@ -5,14 +5,37 @@ import { GlobalHotKeys } from 'react-hotkeys'
 import IconButton from '@material-ui/core/IconButton'
 import { useMediaQuery } from '@material-ui/core'
 import Tooltip from '@material-ui/core/Tooltip'
-import { RiFileMusicLine, RiInfinityLine, RiSaveLine } from 'react-icons/ri'
+import {
+  RiFileMusicLine,
+  RiInfinityLine,
+  RiRepeat2Line,
+  RiRepeatOneLine,
+  RiSaveLine,
+  RiShuffleLine,
+} from 'react-icons/ri'
 import { LoveButton, useToggleLove } from '../common'
-import { openSaveQueueDialog, setEndlessPlay } from '../actions'
+import {
+  openSaveQueueDialog,
+  setEndlessPlay,
+  setPlayMode,
+  setShuffle,
+} from '../actions'
 import { keyMap } from '../hotkeys'
 import { makeStyles } from '@material-ui/core/styles'
 import { PLAYER_DESKTOP_MEDIA_QUERY } from './playerBreakpoints'
 
+// Repeat cycles like Spotify's button: off, repeat the queue, repeat the track
+const REPEAT_MODES = ['order', 'orderLoop', 'singleLoop']
+
 const useStyles = makeStyles((theme) => ({
+  // Shuffle and repeat sit on either side of the previous/play/next buttons
+  shuffle: {
+    order: -1,
+    display: 'inline-flex',
+  },
+  repeat: {
+    display: 'inline-flex',
+  },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
@@ -73,6 +96,9 @@ const PlayerToolbar = ({
   const endlessPlay = useSelector(
     (state) => state.settings.endlessPlay || false,
   )
+  const shuffle = useSelector((state) => state.player.shuffle || false)
+  const playMode = useSelector((state) => state.player.mode)
+  const repeatMode = REPEAT_MODES.includes(playMode) ? playMode : 'order'
   const { data, loading } = useGetOne('song', id, { enabled: !!id && !isRadio })
   const [toggleLove, toggling] = useToggleLove('song', data)
   const isDesktop = useMediaQuery(PLAYER_DESKTOP_MEDIA_QUERY)
@@ -96,6 +122,23 @@ const PlayerToolbar = ({
       e.stopPropagation()
     },
     [dispatch, endlessPlay],
+  )
+
+  const handleToggleShuffle = useCallback(
+    (e) => {
+      dispatch(setShuffle(!shuffle))
+      e.stopPropagation()
+    },
+    [dispatch, shuffle],
+  )
+
+  const handleCycleRepeat = useCallback(
+    (e) => {
+      const next = REPEAT_MODES.indexOf(repeatMode) + 1
+      dispatch(setPlayMode(REPEAT_MODES[next % REPEAT_MODES.length]))
+      e.stopPropagation()
+    },
+    [dispatch, repeatMode],
   )
 
   const buttonClass = isDesktop ? classes.button : classes.mobileButton
@@ -128,6 +171,42 @@ const PlayerToolbar = ({
       className={buttonClass}
     >
       <RiInfinityLine className={!isDesktop ? classes.mobileIcon : undefined} />
+    </IconButton>
+  )
+
+  const shuffleLabel = translate('player.playModeText.shufflePlay')
+  const shuffleButton = (
+    <IconButton
+      size={isDesktop ? 'small' : undefined}
+      onClick={handleToggleShuffle}
+      disabled={isRadio}
+      color={shuffle ? 'primary' : 'default'}
+      title={shuffleLabel}
+      aria-label={shuffleLabel}
+      aria-pressed={shuffle}
+      data-testid="shuffle-button"
+      className={buttonClass}
+    >
+      <RiShuffleLine className={!isDesktop ? classes.mobileIcon : undefined} />
+    </IconButton>
+  )
+
+  const repeatLabel = translate(`player.playModeText.${repeatMode}`)
+  const RepeatIcon =
+    repeatMode === 'singleLoop' ? RiRepeatOneLine : RiRepeat2Line
+  const repeatButton = (
+    <IconButton
+      size={isDesktop ? 'small' : undefined}
+      onClick={handleCycleRepeat}
+      disabled={isRadio}
+      color={repeatMode === 'order' ? 'default' : 'primary'}
+      title={repeatLabel}
+      aria-label={repeatLabel}
+      data-testid="repeat-button"
+      data-mode={repeatMode}
+      className={buttonClass}
+    >
+      <RepeatIcon className={!isDesktop ? classes.mobileIcon : undefined} />
     </IconButton>
   )
 
@@ -170,14 +249,20 @@ const PlayerToolbar = ({
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {isDesktop ? (
-        <li className={`${listItemClass} item`}>
-          {endlessPlayButton}
-          {saveQueueButton}
-          {loveButton}
-          {lyricsButton}
-        </li>
+        <>
+          <span className={classes.shuffle}>{shuffleButton}</span>
+          <span className={classes.repeat}>{repeatButton}</span>
+          <li className={`${listItemClass} item`}>
+            {endlessPlayButton}
+            {saveQueueButton}
+            {loveButton}
+            {lyricsButton}
+          </li>
+        </>
       ) : (
         <>
+          <li className={`${listItemClass} item`}>{shuffleButton}</li>
+          <li className={`${listItemClass} item`}>{repeatButton}</li>
           <li className={`${listItemClass} item`}>{endlessPlayButton}</li>
           <li className={`${listItemClass} item`}>{saveQueueButton}</li>
           <li className={`${listItemClass} item`}>{loveButton}</li>
