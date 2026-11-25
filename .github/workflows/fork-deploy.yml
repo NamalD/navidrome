@@ -54,6 +54,8 @@ jobs:
       - name: Test the Go code
         # The same packages and tags as upstream's pipeline; the plugins suite is left out as it is there.
         run: go test -shuffle=on -tags netgo,sqlite_fts5 $(go list ./... | grep -v '/plugins$')
+      - name: Test the download service
+        run: python3 -m unittest discover contrib/antra-downloader
       - name: Work out the version
         id: version
         run: |

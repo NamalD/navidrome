@@ -120,6 +120,7 @@ type configOptions struct {
 	Backup                          backupOptions       `json:",omitzero"`
 	PID                             pidOptions          `json:",omitzero"`
 	Inspect                         inspectOptions      `json:",omitzero"`
+	Downloader                      downloaderOptions   `json:",omitzero"`
 	Subsonic                        subsonicOptions     `json:",omitzero"`
 	Transcoding                     transcodingOptions  `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
@@ -278,6 +279,11 @@ type inspectOptions struct {
 	MaxRequests    int
 	BacklogLimit   int
 	BacklogTimeout int
+}
+
+type downloaderOptions struct {
+	// URL of the download service (contrib/antra-downloader). Empty disables adding music from the web UI.
+	URL string
 }
 
 type pluginsOptions struct {
@@ -1102,6 +1108,7 @@ func setViperDefaults() {
 	viper.SetDefault("inspect.maxrequests", 1)
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
+	viper.SetDefault("downloader.url", "")
 	viper.SetDefault("plugins.folder", "")
 	viper.SetDefault("plugins.enabled", true)
 	viper.SetDefault("plugins.cachesize", "200MB")
