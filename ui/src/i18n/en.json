@@ -764,11 +764,18 @@
     "empty": "Nothing playing",
     "minutesAgo": "%{smart_count} minute ago |||| %{smart_count} minutes ago"
   },
+  "omnibar": {
+    "placeholder": "Search artists, albums, songs…",
+    "searching": "Searching…",
+    "noResults": "No results",
+    "seeAll": "See all %{count}"
+  },
   "help": {
     "title": "Navidrome Hotkeys",
     "hotkeys": {
       "show_help": "Show This Help",
       "toggle_menu": "Toggle Menu Side Bar",
+      "focus_search": "Search Everything",
       "toggle_play": "Play / Pause",
       "prev_song": "Previous Song",
       "next_song": "Next Song",

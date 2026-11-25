@@ -31,6 +31,11 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
   around [Antra](https://github.com/anandprtp/Antra), run as a second container (see below).
   Code: `core/downloader`, `server/nativeapi/downloader.go` and `ui/src/downloader`.
 
+- **Omnibar.** The search box in the top bar (press `/` to focus it) searches artists, albums, songs and
+  playlists at once and lists the best matches of each in one dropdown. Picking a song plays it; anything else
+  opens its page; "See all" opens that list filtered by the query. Code: `ui/src/layout/Omnibar.jsx` and
+  `useOmniSearch.js` beside it.
+
 ## Build and deploy
 
 `.github/workflows/fork-deploy.yml` checks the web UI (lint, formatting, tests), runs the Go tests, builds the
