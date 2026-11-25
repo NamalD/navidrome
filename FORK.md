@@ -20,6 +20,9 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
   `getLyricsBySongId`, so sidecar files and lyrics plugins show up, not only embedded tags. It is upstream's
   pull request #5733 squashed into one commit while that is still open there; drop our commit when a release
   we take includes it. Code: `ui/src/audioplayer/usePlayerLyrics.jsx` and the `Lyrics*` files beside it.
+- **Disk usage.** The activity panel (admins only) shows how full the disk holding each library is: the share
+  used and the space left, from `GET /api/storage`. Here the library is a Hetzner Storage Box mounted over SMB.
+  Code: `utils/disk`, `server/nativeapi/storage.go` and `ui/src/layout/ActivityPanel.jsx`.
 
 ## Build and deploy
 

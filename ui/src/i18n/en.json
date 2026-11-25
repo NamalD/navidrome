@@ -735,7 +735,9 @@
     "serverDown": "OFFLINE",
     "scanType": "Last Scan",
     "status": "Scan Error",
-    "elapsedTime": "Elapsed Time"
+    "elapsedTime": "Elapsed Time",
+    "storage": "Storage",
+    "storageUsage": "%{percent}% used · %{free} free"
   },
   "nowPlaying": {
     "title": "Now Playing",

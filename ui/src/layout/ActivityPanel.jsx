@@ -12,6 +12,7 @@ import {
   CardActions,
   Divider,
   Box,
+  LinearProgress,
   Typography,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
@@ -22,7 +23,9 @@ import subsonic from '../subsonic'
 import { useInitialScanStatus } from './useInitialScanStatus'
 import { useInterval } from '../common'
 import { useScanElapsedTime } from './useScanElapsedTime'
-import { formatDuration, formatShortDuration } from '../utils'
+import { formatBytes, formatDuration, formatShortDuration } from '../utils'
+import { httpClient } from '../dataProvider'
+import { REST_URL } from '../consts'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
@@ -58,7 +61,22 @@ const useStyles = makeStyles((theme) => ({
   cardContent: {
     padding: theme.spacing(2, 3),
   },
+  storageBar: {
+    height: 8,
+    borderRadius: 4,
+    margin: theme.spacing(1, 0, 0.5),
+  },
+  storageBarFill: {
+    borderRadius: 4,
+  },
+  storageBarFull: {
+    borderRadius: 4,
+    backgroundColor: theme.palette.error.main,
+  },
 }))
+
+// At or above this share used, the bar turns red
+const STORAGE_FULL_PERCENT = 90
 
 const getUptime = (serverStart) =>
   formatDuration((Date.now() - serverStart.startTime) / 1000)
@@ -71,6 +89,10 @@ const Uptime = () => {
   }, 1000)
   return <span>{uptime}</span>
 }
+
+// The share of the disk in use, out of what the library could use (as df reports it)
+const usedPercent = ({ used, free }) =>
+  used + free > 0 ? Math.round((used / (used + free)) * 100) : 0
 
 const ActivityPanel = () => {
   const serverStart = useSelector((state) => state.activity.serverStart)
@@ -88,7 +110,15 @@ const ActivityPanel = () => {
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
+  const [storage, setStorage] = useState([])
   useInitialScanStatus()
+
+  useEffect(() => {
+    if (!open) return
+    httpClient(`${REST_URL}/storage`)
+      .then(({ json }) => setStorage(json))
+      .catch(() => setStorage([]))
+  }, [open])
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget)
@@ -211,6 +241,47 @@ const ActivityPanel = () => {
               </Box>
             )}
           </CardContent>
+          {storage.length > 0 && (
+            <>
+              <Divider />
+              <CardContent className={classes.cardContent}>
+                {storage.map((lib, i) => {
+                  const percent = usedPercent(lib)
+                  return (
+                    <Box
+                      key={lib.id}
+                      mt={i > 0 ? 2 : 0}
+                      className={classes.counterStatus}
+                    >
+                      <Typography variant="subtitle2">
+                        {storage.length > 1
+                          ? lib.name
+                          : translate('activity.storage')}
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={percent}
+                        aria-label={lib.name}
+                        classes={{
+                          root: classes.storageBar,
+                          bar:
+                            percent >= STORAGE_FULL_PERCENT
+                              ? classes.storageBarFull
+                              : classes.storageBarFill,
+                        }}
+                      />
+                      <Typography variant="caption" color="textSecondary">
+                        {translate('activity.storageUsage', {
+                          percent,
+                          free: formatBytes(lib.free, 1),
+                        })}
+                      </Typography>
+                    </Box>
+                  )
+                })}
+              </CardContent>
+            </>
+          )}
           <Divider />
           <CardActions>
             <Tooltip title={translate('activity.quickScan')}>

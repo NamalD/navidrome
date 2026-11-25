@@ -8,6 +8,7 @@ import ActivityPanel from './ActivityPanel'
 import { activityReducer } from '../reducers'
 import config from '../config'
 import subsonic from '../subsonic'
+import { httpClient } from '../dataProvider'
 
 vi.mock('../subsonic', () => ({
   default: {
@@ -23,6 +24,10 @@ vi.mock('../subsonic', () => ({
     ),
     startScan: vi.fn(),
   },
+}))
+
+vi.mock('../dataProvider', () => ({
+  httpClient: vi.fn(() => Promise.resolve({ json: [] })),
 }))
 
 describe('<ActivityPanel />', () => {
@@ -58,6 +63,35 @@ describe('<ActivityPanel />', () => {
     fireEvent.click(button)
     expect(screen.getByTestId('activity-warning-icon')).toBeInTheDocument()
     expect(screen.getByText('Scan failed')).toBeInTheDocument()
+  })
+
+  it('shows how full the disk holding the library is', async () => {
+    const GB = 1024 ** 3
+    httpClient.mockResolvedValueOnce({
+      json: [
+        {
+          id: 1,
+          name: 'Music Library',
+          total: 1000 * GB,
+          used: 250 * GB,
+          free: 750 * GB,
+        },
+      ],
+    })
+    render(
+      <Provider store={store}>
+        <ActivityPanel />
+      </Provider>,
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+
+    const bar = await screen.findByRole('progressbar', {
+      name: 'Music Library',
+    })
+    expect(bar).toHaveAttribute('aria-valuenow', '25')
+    expect(screen.getByText('activity.storageUsage')).toBeInTheDocument()
+    expect(httpClient).toHaveBeenCalledWith('/api/storage')
   })
 
   it('shows error icon when server is down', () => {
