@@ -2,9 +2,15 @@ import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
 import { Divider, makeStyles } from '@material-ui/core'
 import clsx from 'clsx'
-import { useTranslate, MenuItemLink, getResources } from 'react-admin'
+import {
+  useTranslate,
+  MenuItemLink,
+  getResources,
+  usePermissions,
+} from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
+import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
 import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
@@ -56,6 +62,7 @@ const Menu = ({ dense = false }) => {
   const queue = useSelector((state) => state.player?.queue)
   const classes = useStyles({ addPadding: queue.length > 0 })
   const resources = useSelector(getResources)
+  const { permissions } = usePermissions()
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
@@ -130,6 +137,16 @@ const Menu = ({ dense = false }) => {
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      {config.enableDownloader && permissions === 'admin' && (
+        <MenuItemLink
+          to="/downloader"
+          activeClassName={classes.active}
+          primaryText={translate('menu.downloader')}
+          leftIcon={<LibraryAddIcon />}
+          sidebarIsOpen={open}
+          dense={dense}
+        />
+      )}
       {config.devSidebarPlaylists && open ? (
         <>
           <Divider />

@@ -45,7 +45,7 @@ var _ = Describe("Storage Endpoint", func() {
 		userToken, err = auth.CreateToken(&user)
 		Expect(err).ToNot(HaveOccurred())
 
-		router = server.JWTVerifier(New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil))
+		router = server.JWTVerifier(New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil, nil))
 	})
 
 	It("returns the disk usage of each library that can be read", func() {

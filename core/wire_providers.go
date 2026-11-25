@@ -3,6 +3,7 @@ package core
 import (
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/downloader"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/lyrics"
@@ -36,4 +37,5 @@ var Set = wire.NewSet(
 	quickconnect.GetInstance,
 	metrics.GetInstance,
 	lyrics.NewLyrics,
+	downloader.New,
 )

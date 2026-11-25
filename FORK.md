@@ -23,6 +23,13 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
 - **Disk usage.** The activity panel (admins only) shows how full the disk holding each library is: the share
   used and the space left, from `GET /api/storage`. Here the library is a Hetzner Storage Box mounted over SMB.
   Code: `utils/disk`, `server/nativeapi/storage.go` and `ui/src/layout/ActivityPanel.jsx`.
+- **Add music.** The "Add Music" page in the sidebar (admins only) searches a streaming catalog for albums, or
+  takes a pasted link, and downloads the one picked into the library, showing each download's progress. Navidrome
+  does not download anything itself: `Downloader.URL` (`ND_DOWNLOADER_URL`) points at a download service, the page
+  talks to it through `/api/downloader`, and the library is scanned when a download finishes. Without the
+  setting the page and the endpoints don't exist. Our service is `contrib/antra-downloader`: a small HTTP server
+  around [Antra](https://github.com/anandprtp/Antra), run as a second container (see below).
+  Code: `core/downloader`, `server/nativeapi/downloader.go` and `ui/src/downloader`.
 
 ## Build and deploy
 
@@ -30,6 +37,22 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
 Docker image as `ghcr.io/namald/navidrome:<upstream version>-<short sha>` and deploys that tag to the VPS, which
 rolls back if Navidrome doesn't answer. To roll back by hand, run the workflow with an older tag. Upstream's own workflows are
 disabled in this repository.
+
+## The download service
+
+`contrib/antra-downloader` is not part of the Navidrome image and CI does not build it. On the VPS its
+`Dockerfile` and `server.py` are copied to `~/apps/navidrome/antra-downloader/`, and `docker-compose.yml` there
+builds and runs it as `antra-downloader` beside Navidrome, with the music folder mounted writable at `/music`
+and Antra's settings (the Spotify cookie, the folder template) in `antra-downloader.env`. It has no
+authentication and publishes no port; only Navidrome reaches it, at `http://antra-downloader:8787`. After
+changing it, or to take a new Antra release (`ANTRA_VERSION` in the Dockerfile):
+
+```sh
+scp contrib/antra-downloader/{Dockerfile,server.py} <vps>:apps/navidrome/antra-downloader/
+ssh <vps> 'cd ~/apps/navidrome && docker compose up -d --build antra-downloader'
+```
+
+Its tests use a fake in place of Antra: `python3 -m unittest discover contrib/antra-downloader`.
 
 ## Taking a new upstream release
 

@@ -655,6 +655,7 @@
       }
     },
     "albumList": "Albums",
+    "downloader": "Add Music",
     "playlists": "Playlists",
     "onlyFavourites": "Only show favourites",
     "sharedPlaylists": "Shared Playlists",
@@ -738,6 +739,25 @@
     "elapsedTime": "Elapsed Time",
     "storage": "Storage",
     "storageUsage": "%{percent}% used · %{free} free"
+  },
+  "downloader": {
+    "searchLabel": "Album or artist",
+    "searchHelp": "Search for an album to add to the library, or paste a link to one",
+    "results": "Albums",
+    "noResults": "No albums found",
+    "downloads": "Downloads",
+    "downloading": "Downloading",
+    "downloaded": "Downloaded",
+    "error": "The download service is not answering",
+    "status": {
+      "queued": "Waiting for other downloads",
+      "starting": "Starting",
+      "running": "%{done} of %{total} tracks · %{track}",
+      "completed": "Added %{smart_count} track |||| Added %{smart_count} tracks",
+      "completedWithFailures": "Added %{smart_count} track, %{failed} failed |||| Added %{smart_count} tracks, %{failed} failed",
+      "alreadyInLibrary": "Already in the library",
+      "failed": "Failed: %{error}"
+    }
   },
   "nowPlaying": {
     "title": "Now Playing",

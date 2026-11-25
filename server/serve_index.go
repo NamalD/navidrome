@@ -63,6 +63,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"gaTrackingId":              conf.Server.GATrackingID,
 			"losslessFormats":           strings.ToUpper(strings.Join(mime.LosslessFormats, ",")),
 			"devActivityPanel":          conf.Server.DevActivityPanel,
+			"enableDownloader":          conf.Server.Downloader.URL != "",
 			"enableUserEditing":         conf.Server.EnableUserEditing,
 			"enableArtworkUpload":       conf.Server.EnableArtworkUpload,
 			"enableSharing":             conf.Server.EnableSharing,
