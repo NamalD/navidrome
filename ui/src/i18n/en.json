@@ -13,6 +13,7 @@
         "composer": "Composer",
         "album": "Album",
         "path": "File path",
+        "lyrics": "Lyrics",
         "libraryName": "Library",
         "genre": "Genre",
         "compilation": "Compilation",
@@ -765,10 +766,11 @@
     "minutesAgo": "%{smart_count} minute ago |||| %{smart_count} minutes ago"
   },
   "omnibar": {
-    "placeholder": "Search artists, albums, songs…",
+    "placeholder": "Search artists, albums, songs, lyrics…",
     "searching": "Searching…",
     "noResults": "No results",
-    "seeAll": "See all %{count}"
+    "seeAll": "See all %{count}",
+    "lyrics": "Lyrics"
   },
   "help": {
     "title": "Navidrome Hotkeys",

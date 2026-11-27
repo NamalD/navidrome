@@ -35,6 +35,13 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
   playlists at once and lists the best matches of each in one dropdown. Picking a song plays it; anything else
   opens its page; "See all" opens that list filtered by the query. Code: `ui/src/layout/Omnibar.jsx` and
   `useOmniSearch.js` beside it.
+- **Search by lyrics.** The omnibar also lists the songs whose lyrics contain the words typed, with the line that
+  matched, and the song list takes a `lyrics` filter ("See all" uses it). Only lyrics stored in the database are
+  searched, which are the ones embedded in the files' tags: lyrics a plugin fetches when a song is played are not.
+  The index is the FTS5 table `media_file_lyrics_fts`, kept current by triggers on `media_file`. It is created at
+  startup rather than by a migration, because goose stops the server when the database is ahead of a migration it
+  has not applied, as it would be for any upstream migration written before ours and released after. Code:
+  `db/lyrics_search.go`, `persistence/sql_search_lyrics.go` and `ui/src/layout/lyricsMatch.js`.
 
 ## Build and deploy
 

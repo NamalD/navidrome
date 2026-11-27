@@ -27,6 +27,7 @@ import { playTracks } from '../actions'
 import { useGetHandleArtistClick } from '../common/useGetHandleArtistClick'
 import { keyMap } from '../hotkeys'
 import { useOmniSearch } from './useOmniSearch'
+import { matchingLyricsLine } from './lyricsMatch'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -64,7 +65,12 @@ const useStyles = makeStyles(
   { name: 'NDOmnibar' },
 )
 
-const secondaryText = (resource, record, translate) => {
+const secondaryText = (section, record, translate, query) => {
+  const { resource } = section
+  if (section.key === 'lyrics') {
+    const line = matchingLyricsLine(record.lyrics, query)
+    if (line) return `“${line}”`
+  }
   switch (resource) {
     case 'album':
       return record.albumArtist
@@ -216,14 +222,16 @@ const Omnibar = () => {
             )}
             {sections.map((section) => (
               <List
-                key={section.resource}
+                key={section.key}
                 dense
                 disablePadding
                 subheader={
                   <ListSubheader className={classes.subheader}>
-                    {translate(`resources.${section.resource}.name`, {
-                      smart_count: 2,
-                    })}
+                    {section.key === 'lyrics'
+                      ? translate('omnibar.lyrics')
+                      : translate(`resources.${section.resource}.name`, {
+                          smart_count: 2,
+                        })}
                     {section.total > section.items.length && (
                       <Link
                         className={classes.seeAll}
@@ -244,6 +252,13 @@ const Omnibar = () => {
                     <ListItem
                       button
                       key={record.id}
+                      title={
+                        section.key === 'lyrics'
+                          ? [record.artist, record.album]
+                              .filter(Boolean)
+                              .join(' • ')
+                          : undefined
+                      }
                       selected={index === active}
                       onMouseEnter={() => setActive(index)}
                       onClick={() =>
@@ -265,9 +280,10 @@ const Omnibar = () => {
                       <ListItemText
                         primary={record.title || record.name}
                         secondary={secondaryText(
-                          section.resource,
+                          section,
                           record,
                           translate,
+                          answered,
                         )}
                         primaryTypographyProps={{ noWrap: true }}
                         secondaryTypographyProps={{ noWrap: true }}

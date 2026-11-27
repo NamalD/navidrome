@@ -7,6 +7,7 @@ import {
   ReferenceArrayInput,
   SearchInput,
   TextField,
+  TextInput,
   useTranslate,
   NullableBooleanInput,
   usePermissions,
@@ -75,6 +76,11 @@ const SongFilter = (props) => {
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput source="title" alwaysOn />
+      <TextInput
+        source="lyrics"
+        label={translate('resources.song.fields.lyrics')}
+        resettable
+      />
       <ReferenceArrayInput
         label={translate('resources.song.fields.genre')}
         source="genre_id"

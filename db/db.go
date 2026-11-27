@@ -109,6 +109,10 @@ func Init(ctx context.Context) func() {
 		log.Fatal(ctx, "Failed to apply new migrations", err)
 	}
 
+	if err = ensureLyricsSearch(ctx, db); err != nil {
+		log.Fatal(ctx, "Failed to set up the lyrics search index", err)
+	}
+
 	if hasSchemaChanges {
 		log.Debug(ctx, "Running ANALYZE after schema changes")
 		err = optimizeAt(ctx, db, time.Now())

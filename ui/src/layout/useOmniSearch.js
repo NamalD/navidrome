@@ -3,13 +3,26 @@ import { DataProviderContext } from 'react-admin'
 import config from '../config'
 
 // What the omnibar searches, in the order the groups are shown. `field` is
-// the filter each resource's own list view uses for its search box.
+// the filter the resource's list view takes for that search. The lyrics group
+// lists songs too, the ones whose lyrics match.
 export const OMNI_SECTIONS = [
-  { resource: 'artist', field: 'name', perPage: 4 },
-  { resource: 'album', field: 'name', perPage: 4 },
-  { resource: 'song', field: 'title', perPage: 5 },
-  { resource: 'playlist', field: 'q', perPage: 3 },
+  { key: 'artist', resource: 'artist', field: 'name', perPage: 4 },
+  { key: 'album', resource: 'album', field: 'name', perPage: 4 },
+  { key: 'song', resource: 'song', field: 'title', perPage: 5 },
+  { key: 'playlist', resource: 'playlist', field: 'q', perPage: 3 },
+  { key: 'lyrics', resource: 'song', field: 'lyrics', perPage: 4 },
 ]
+
+// A song found by its title is not repeated under the lyrics
+const withoutRepeatedSongs = (sections) => {
+  const songs = sections.find((s) => s.key === 'song')
+  const listed = new Set((songs?.items || []).map((song) => song.id))
+  return sections.map((s) =>
+    s.key === 'lyrics'
+      ? { ...s, items: s.items.filter((song) => !listed.has(song.id)) }
+      : s,
+  )
+}
 
 const EMPTY = { sections: [], loading: false, query: '' }
 
@@ -47,7 +60,9 @@ export const useOmniSearch = (query) => {
       ).then((sections) => {
         if (cancelled) return
         setState({
-          sections: sections.filter((s) => s.items.length > 0),
+          sections: withoutRepeatedSongs(sections).filter(
+            (s) => s.items.length > 0,
+          ),
           loading: false,
           query: q,
         })

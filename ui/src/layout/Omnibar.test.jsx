@@ -72,15 +72,17 @@ describe('<Omnibar />', () => {
     await type('karma')
     await screen.findByText('Karma Police')
 
-    const filters = Object.fromEntries(
-      getList.mock.calls.map(([resource, params]) => [resource, params.filter]),
-    )
-    expect(filters).toEqual({
-      artist: { name: 'karma' },
-      album: { name: 'karma' },
-      song: { title: 'karma' },
-      playlist: { q: 'karma' },
-    })
+    const searches = getList.mock.calls.map(([resource, params]) => [
+      resource,
+      params.filter,
+    ])
+    expect(searches).toEqual([
+      ['artist', { name: 'karma' }],
+      ['album', { name: 'karma' }],
+      ['song', { title: 'karma' }],
+      ['playlist', { q: 'karma' }],
+      ['song', { lyrics: 'karma' }],
+    ])
   })
 
   it('searches without touching the Redux store', async () => {
@@ -137,6 +139,59 @@ describe('<Omnibar />', () => {
     expect(history.location.search).toBe(
       `?filter=${encodeURIComponent('{"title":"karma"}')}`,
     )
+  })
+
+  describe('songs whose lyrics match', () => {
+    const creep = {
+      id: 's3',
+      title: 'Creep',
+      artist: 'Radiohead',
+      lyrics: JSON.stringify([
+        {
+          lang: 'eng',
+          line: [
+            { value: 'When you were here before' },
+            { value: "But I'm a creep, I'm a weirdo" },
+          ],
+        },
+      ]),
+    }
+
+    beforeEach(() => {
+      getList.mockImplementation((resource, { filter }) => {
+        if (filter.lyrics) {
+          return Promise.resolve({ data: [library.song[0], creep], total: 2 })
+        }
+        const data = resource === 'song' ? [library.song[0]] : []
+        return Promise.resolve({ data, total: data.length })
+      })
+    })
+
+    it('are listed in their own group with the line that matched', async () => {
+      await type('im a weirdo')
+
+      expect(await screen.findByText('omnibar.lyrics')).toBeTruthy()
+      expect(screen.getByText('Creep')).toBeTruthy()
+      expect(screen.getByText("“But I'm a creep, I'm a weirdo”")).toBeTruthy()
+    })
+
+    it('are not repeated when the title matched too', async () => {
+      await type('im a weirdo')
+      await screen.findByText('omnibar.lyrics')
+
+      expect(screen.getAllByText('Karma Police')).toHaveLength(1)
+    })
+
+    it('link to the song list filtered by lyrics', async () => {
+      await type('im a weirdo')
+      await screen.findByText('omnibar.lyrics')
+      fireEvent.click(screen.getByText('omnibar.seeAll 2'))
+
+      expect(history.location.pathname).toBe('/song')
+      expect(history.location.search).toBe(
+        `?filter=${encodeURIComponent('{"lyrics":"im a weirdo"}')}`,
+      )
+    })
   })
 
   it('says so when nothing matches', async () => {
