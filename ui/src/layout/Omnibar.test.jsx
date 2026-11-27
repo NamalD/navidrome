@@ -9,14 +9,16 @@ import Omnibar from './Omnibar'
 import config from '../config'
 import { PLAYER_PLAY_TRACKS } from '../actions'
 
-const getList = vi.fn()
-const dataProvider = { getList }
+const { getList } = vi.hoisted(() => ({ getList: vi.fn() }))
 
-vi.mock('react-admin', () => ({
-  useTranslate: () => (key, options) =>
-    options?.count ? `${key} ${options.count}` : key,
-  useDataProvider: () => dataProvider,
-}))
+vi.mock('react-admin', async () => {
+  const { createContext } = await import('react')
+  return {
+    useTranslate: () => (key, options) =>
+      options?.count ? `${key} ${options.count}` : key,
+    DataProviderContext: createContext({ getList }),
+  }
+})
 vi.mock('react-hotkeys', () => ({ GlobalHotKeys: () => null }))
 vi.mock('../subsonic', () => ({
   default: { getCoverArtUrl: () => 'cover.jpg' },
@@ -79,6 +81,13 @@ describe('<Omnibar />', () => {
       song: { title: 'karma' },
       playlist: { q: 'karma' },
     })
+  })
+
+  it('searches without touching the Redux store', async () => {
+    await type('karma')
+    await screen.findByText('Karma Police')
+
+    expect(dispatch).not.toHaveBeenCalled()
   })
 
   it('groups the matches and leaves out groups without any', async () => {

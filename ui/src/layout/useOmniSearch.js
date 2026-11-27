@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useDataProvider } from 'react-admin'
+import { useContext, useEffect, useState } from 'react'
+import { DataProviderContext } from 'react-admin'
 import config from '../config'
 
 // What the omnibar searches, in the order the groups are shown. `field` is
@@ -16,7 +16,11 @@ const EMPTY = { sections: [], loading: false, query: '' }
 // Searches every section for `query` (debounced) and returns the sections
 // that have matches. `query` in the result is the one the sections answer.
 export const useOmniSearch = (query) => {
-  const dataProvider = useDataProvider()
+  // The data provider itself, not useDataProvider(): that hook reports every
+  // request to the Redux store (five actions each, and the records are merged
+  // into the resource's list data), which re-renders the whole page several
+  // times per search and makes typing stutter.
+  const dataProvider = useContext(DataProviderContext)
   const [state, setState] = useState(EMPTY)
   const q = query.trim()
 
