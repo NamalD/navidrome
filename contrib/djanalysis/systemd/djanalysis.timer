@@ -1,0 +1,10 @@
+[Unit]
+Description=Analyse new Navidrome songs for the DJ mixer every three hours
+
+[Timer]
+OnCalendar=*-*-* 00/3:30:00
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

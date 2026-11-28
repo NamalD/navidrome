@@ -1,0 +1,31 @@
+[project]
+name = "djanalysis"
+version = "0.1.0"
+description = "Analyses Navidrome songs for the DJ mixer: beats, downbeats, key, phrases, loudness, similarity"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "beat-this==1.1.0",
+    "essentia-tensorflow==2.1b6.dev1438",
+    "numpy",
+    "soundfile",
+    "soxr",
+    "pyloudnorm==0.2.0",
+    "torch>=2.9",
+    "torchaudio>=2.9",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

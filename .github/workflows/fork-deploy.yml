@@ -60,6 +60,13 @@ jobs:
         # A Go module of its own, so the step above leaves it out.
         working-directory: contrib/nowplaylist
         run: go test ./...
+      - name: Test djanalysis
+        # Only the pure helpers: the audio models need a GPU desktop.
+        working-directory: contrib/djanalysis
+        run: |
+          python3 -m venv /tmp/djanalysis-venv
+          /tmp/djanalysis-venv/bin/pip install --quiet numpy pytest
+          /tmp/djanalysis-venv/bin/python -m pytest -q
       - name: Work out the version
         id: version
         run: |

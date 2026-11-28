@@ -1,0 +1,15 @@
+# Analyses new or changed songs for the DJ mixer and uploads the results to Navidrome. Installed by `make
+# install` in contrib/djanalysis; see README.md. `run` exits 75 when a game is using the GPU; the timer simply tries again later.
+[Unit]
+Description=Analyse new Navidrome songs for the DJ mixer
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/code/navidrome/contrib/djanalysis
+Environment=TORCH_HOME=%h/hdd/djanalysis/torch
+Nice=10
+# "-": upload what did get analysed even if some songs failed.
+ExecStart=-%h/hdd/djanalysis/venv/bin/python -m djanalysis run
+ExecStart=%h/hdd/djanalysis/venv/bin/python -m djanalysis upload
