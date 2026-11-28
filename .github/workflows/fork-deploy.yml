@@ -56,6 +56,10 @@ jobs:
         run: go test -shuffle=on -tags netgo,sqlite_fts5 $(go list ./... | grep -v '/plugins$')
       - name: Test the download service
         run: python3 -m unittest discover contrib/antra-downloader
+      - name: Test nowplaylist
+        # A Go module of its own, so the step above leaves it out.
+        working-directory: contrib/nowplaylist
+        run: go test ./...
       - name: Work out the version
         id: version
         run: |

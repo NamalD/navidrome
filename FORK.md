@@ -71,6 +71,12 @@ ssh <vps> 'cd ~/apps/navidrome && docker compose up -d --build antra-downloader'
 
 Its tests use a fake in place of Antra: `python3 -m unittest discover contrib/antra-downloader`.
 
+## Playlists from listening history
+
+`contrib/nowplaylist` is a separate Go module, not part of the Navidrome image, that runs on the desktop. It
+reads the Last.fm history and will build time-of-day playlists in Navidrome through the Subsonic API. CI runs its
+tests; how to build and configure it is in its `README.md`.
+
 ## Taking a new upstream release
 
 ```sh
