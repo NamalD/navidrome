@@ -473,6 +473,9 @@ func (r *albumRepository) Read(id string) (any, error) {
 }
 
 func (r *albumRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
+	if q, rest, ok := relevanceSearch("name", options); ok {
+		return r.Search(q, r.parseRestOptions(r.ctx, rest...))
+	}
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 

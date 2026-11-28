@@ -737,6 +737,9 @@ func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	r.sortMappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"
 	r.sortMappings["album_count"] = "sum(stats->>'" + role + "'->>'a')"
 	r.sortMappings["size"] = "sum(stats->>'" + role + "'->>'s')"
+	if q, rest, ok := relevanceSearch("name", options); ok {
+		return r.Search(q, r.parseRestOptions(r.ctx, rest...))
+	}
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 

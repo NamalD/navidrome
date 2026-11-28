@@ -619,6 +619,12 @@ func (r *mediaFileRepository) Read(id string) (any, error) {
 }
 
 func (r *mediaFileRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
+	if q, rest, ok := relevanceSearch("title", options); ok {
+		return r.Search(q, r.parseRestOptions(r.ctx, rest...))
+	}
+	if q, rest, ok := relevanceSearch("lyrics", options); ok {
+		return r.searchLyrics(q, r.parseRestOptions(r.ctx, rest...))
+	}
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 

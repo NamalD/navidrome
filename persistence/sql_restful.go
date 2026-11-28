@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 	"sync"
@@ -104,6 +105,23 @@ func containsFilter(field string) func(string, any) Sqlizer {
 func booleanFilter(field string, value any) Sqlizer {
 	v := strings.ToLower(value.(string))
 	return Eq{field: v == "true"}
+}
+
+// relevanceSearch reports the search query of a REST request that filters by the full-text field and asks
+// for no particular order, so its matches can be listed by relevance, and the request without that filter.
+// Queries of one character keep to the filter, which allows them where search does not.
+func relevanceSearch(field string, options []rest.QueryOptions) (string, []rest.QueryOptions, bool) {
+	if len(options) == 0 || options[0].Sort != "" {
+		return "", options, false
+	}
+	q, ok := options[0].Filters[field].(string)
+	if !ok || len([]rune(strings.TrimSpace(q))) < 2 {
+		return "", options, false
+	}
+	opt := options[0]
+	opt.Filters = maps.Clone(opt.Filters)
+	delete(opt.Filters, field)
+	return q, []rest.QueryOptions{opt}, true
 }
 
 func fullTextFilter(tableName string, mbidFields ...string) func(string, any) Sqlizer {

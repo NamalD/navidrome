@@ -33,7 +33,9 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
 
 - **Omnibar.** The search box in the top bar (press `/` to focus it) searches artists, albums, songs and
   playlists at once and lists the best matches of each in one dropdown. Picking a song plays it; anything else
-  opens its page; "See all" opens that list filtered by the query. Code: `ui/src/layout/Omnibar.jsx` and
+  opens its page; "See all" opens that list filtered by the query. The matches in each group come best first: a list
+  request that filters by the search field (`title`, `name`, `lyrics`) and asks for no order is answered by the
+  ranked search instead of the filter. Code: `ui/src/layout/Omnibar.jsx` and
   `useOmniSearch.js` beside it.
 - **Search by lyrics.** The omnibar also lists the songs whose lyrics contain the words typed, with the line that
   matched, and the song list takes a `lyrics` filter ("See all" uses it). It searches the lyrics in each song's
