@@ -106,6 +106,57 @@ var _ = Describe("DJ analysis endpoints", func() {
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
 
+	It("plans the next song among the ones the user can see", func() {
+		mf := ds.MockedMediaFile.(*tests.MockMediaFileRepo)
+		mf.SetData(model.MediaFiles{{ID: "song-1", Title: "One"}, {ID: "song-2", Title: "Two"}})
+		steady := func(title string, bpm float64) string {
+			beat := 60 / bpm
+			var beats, downbeats []float64
+			for i := range 256 {
+				beats = append(beats, 0.5+float64(i)*beat)
+				if i%4 == 0 {
+					downbeats = append(downbeats, 0.5+float64(i)*beat)
+				}
+			}
+			doc, _ := json.Marshal(map[string]any{
+				"schema": 1, "duration": 256*beat + 2, "bpm": bpm, "beats": beats, "downbeats": downbeats,
+				"phrases": []int{0, 16, 32, 48}, "key": map[string]any{"pitch_class": 0, "confidence": "high"},
+				"embedding": []float64{1, 0.1}, "source": map[string]any{"artist": "A", "title": title},
+			})
+			return string(doc)
+		}
+		repo := ds.DJAnalysis(nil)
+		Expect(repo.Put("song-1", []byte(steady("One", 124)))).To(Succeed())
+		Expect(repo.Put("song-2", []byte(steady("Two", 126)))).To(Succeed())
+		// Analysed, but not in the library any more (or not visible to this user).
+		Expect(repo.Put("gone", []byte(steady("Gone", 124)))).To(Succeed())
+
+		get := func(query string) *httptest.ResponseRecorder {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, createAuthenticatedRequest(http.MethodGet, "/dj/next?"+query, &bytes.Buffer{}, userToken))
+			return w
+		}
+		for range 10 {
+			w := get("current=song-1&rate=1")
+			Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+			var plan struct {
+				SongID     string `json:"songId"`
+				Transition struct {
+					Type string  `json:"type"`
+					Rate float64 `json:"rate"`
+				} `json:"transition"`
+			}
+			Expect(json.Unmarshal(w.Body.Bytes(), &plan)).To(Succeed())
+			Expect(plan.SongID).To(Equal("song-2"))
+			Expect(plan.Transition.Type).To(Equal("blend"))
+			Expect(plan.Transition.Rate).To(BeNumerically("~", 124.0/126, 1e-9))
+		}
+		Expect(get("current=song-1&exclude=song-2").Code).To(Equal(http.StatusNotFound))
+		Expect(get("current=nope").Code).To(Equal(http.StatusNotFound))
+		Expect(get("").Code).To(Equal(http.StatusBadRequest))
+		Expect(get("current=song-1&rate=abc").Code).To(Equal(http.StatusBadRequest))
+	})
+
 	It("answers 404 for a song that has not been analysed", func() {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, createAuthenticatedRequest(http.MethodGet, "/dj/analysis/song-1", &bytes.Buffer{}, userToken))

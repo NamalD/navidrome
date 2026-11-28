@@ -106,6 +106,13 @@ at startup like the lyrics index. `PUT /api/dj/upload/{id}` and `GET /api/dj/upl
 serves a song's analysis, minus its embedding, to logged-in users. Code: `db/dj_analysis.go`,
 `persistence/dj_analysis_repository.go`, `server/nativeapi/dj.go`.
 
+`GET /api/dj/next?current=<id>&rate=&semitones=&exclude=<ids>&history=<ids>` is the planner (`core/djmix`). It
+scores every analysed song the user can see on sound (cosine of Discogs-EffNet embeddings, as a rank), tempo (within
+±8% after folding half/double time) and key (Camelot wheel, transposing up to a semitone), picks at random among the
+best five, and returns the song with its transition: a phrase-aligned blend of 4–16 bars (at most 32 s) with a bass
+swap halfway, an echo-out when tempos are too far apart, or a 12 s fade when either song has no steady beat. Times
+are seconds into each song as recorded. Analyses stay in memory and reload every 10 minutes.
+
 ## Taking a new upstream release
 
 ```sh
