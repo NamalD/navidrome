@@ -1,0 +1,11 @@
+[Unit]
+Description=Rebuild the Navidrome "Now" playlist every two hours
+
+[Timer]
+OnCalendar=*-*-* 00/2:00:00
+# Run at login if a slot passed while the PC was off.
+Persistent=true
+RandomizedDelaySec=2min
+
+[Install]
+WantedBy=timers.target

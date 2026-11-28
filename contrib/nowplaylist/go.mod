@@ -2,7 +2,10 @@ module github.com/NamalD/navidrome/contrib/nowplaylist
 
 go 1.27.1
 
-require modernc.org/sqlite v1.63.0
+require (
+	golang.org/x/text v0.44.0
+	modernc.org/sqlite v1.63.0
+)
 
 require (
 	github.com/dustin/go-humanize v1.1.0 // indirect

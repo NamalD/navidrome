@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -283,4 +284,73 @@ func atoiOrZero(s string) (int, error) {
 		return 0, nil
 	}
 	return strconv.Atoi(s)
+}
+
+// Similar is a track or artist Last.fm considers similar, with its match score from 0 to 1. Track is empty for
+// similar artists.
+type Similar struct {
+	Artist string
+	Track  string
+	Match  float64
+}
+
+// flexFloat reads a number Last.fm sends either as a JSON number or as a string.
+type flexFloat float64
+
+func (f *flexFloat) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	if s == "" {
+		*f = 0
+		return nil
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	*f = flexFloat(v)
+	return err
+}
+
+// SimilarTracks is track.getSimilar.
+func (c *Client) SimilarTracks(ctx context.Context, artist, track string, limit int) ([]Similar, error) {
+	var resp struct {
+		SimilarTracks struct {
+			Track []struct {
+				Name   string    `json:"name"`
+				Match  flexFloat `json:"match"`
+				Artist struct {
+					Name string `json:"name"`
+				} `json:"artist"`
+			} `json:"track"`
+		} `json:"similartracks"`
+	}
+	err := c.call(ctx, url.Values{"method": {"track.getsimilar"}, "artist": {artist}, "track": {track},
+		"limit": {strconv.Itoa(limit)}, "autocorrect": {"1"}}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Similar, 0, len(resp.SimilarTracks.Track))
+	for _, t := range resp.SimilarTracks.Track {
+		out = append(out, Similar{Artist: t.Artist.Name, Track: t.Name, Match: float64(t.Match)})
+	}
+	return out, nil
+}
+
+// SimilarArtists is artist.getSimilar.
+func (c *Client) SimilarArtists(ctx context.Context, artist string, limit int) ([]Similar, error) {
+	var resp struct {
+		SimilarArtists struct {
+			Artist []struct {
+				Name  string    `json:"name"`
+				Match flexFloat `json:"match"`
+			} `json:"artist"`
+		} `json:"similarartists"`
+	}
+	err := c.call(ctx, url.Values{"method": {"artist.getsimilar"}, "artist": {artist},
+		"limit": {strconv.Itoa(limit)}, "autocorrect": {"1"}}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Similar, 0, len(resp.SimilarArtists.Artist))
+	for _, a := range resp.SimilarArtists.Artist {
+		out = append(out, Similar{Artist: a.Name, Match: float64(a.Match)})
+	}
+	return out, nil
 }

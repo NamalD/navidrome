@@ -15,6 +15,19 @@ type config struct {
 	LastfmUser   string // LASTFM_USER
 	LastfmAPIKey string // LASTFM_APIKEY
 	DBPath       string // NOWPLAYLIST_DB, default ~/.local/share/nowplaylist/history.db
+
+	NavidromeURL      string // NAVIDROME_URL, default https://music.namal.dev
+	NavidromeUser     string // NAVIDROME_USER, default nowplaylist
+	NavidromePassword string // NAVIDROME_PASSWORD, or the first line of navidrome-password in the config folder
+	dir               string
+}
+
+// requireNavidrome checks the settings the playlist commands need.
+func (c config) requireNavidrome() error {
+	if c.NavidromePassword == "" {
+		return fmt.Errorf("no Navidrome password: put it in %s/navidrome-password (mode 600) or NAVIDROME_PASSWORD", c.dir)
+	}
+	return nil
 }
 
 func configDir() (string, error) {
@@ -58,6 +71,24 @@ func loadConfig() (config, error) {
 		LastfmUser:   get("LASTFM_USER"),
 		LastfmAPIKey: get("LASTFM_APIKEY"),
 		DBPath:       get("NOWPLAYLIST_DB"),
+
+		NavidromeURL:      get("NAVIDROME_URL"),
+		NavidromeUser:     get("NAVIDROME_USER"),
+		NavidromePassword: get("NAVIDROME_PASSWORD"),
+		dir:               dir,
+	}
+	if c.NavidromeURL == "" {
+		c.NavidromeURL = "https://music.namal.dev"
+	}
+	if c.NavidromeUser == "" {
+		c.NavidromeUser = "nowplaylist"
+	}
+	if c.NavidromePassword == "" {
+		b, err := os.ReadFile(filepath.Join(dir, "navidrome-password"))
+		if err != nil && !os.IsNotExist(err) {
+			return config{}, err
+		}
+		c.NavidromePassword, _, _ = strings.Cut(strings.TrimRight(string(b), "\r\n"), "\n")
 	}
 	if c.DBPath == "" {
 		d, err := dataDir()

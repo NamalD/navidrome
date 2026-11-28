@@ -1,0 +1,11 @@
+# Copies new Last.fm plays, then rebuilds the "Now" playlist in Navidrome. Installed by `make install` in
+# contrib/nowplaylist; see README.md.
+[Unit]
+Description=Rebuild the Navidrome "Now" playlist from Last.fm history
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/nowplaylist sync
+ExecStart=%h/.local/bin/nowplaylist now

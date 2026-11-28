@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,12 +12,16 @@ import (
 
 	"github.com/NamalD/navidrome/contrib/nowplaylist/lastfm"
 	"github.com/NamalD/navidrome/contrib/nowplaylist/store"
+	"github.com/NamalD/navidrome/contrib/nowplaylist/subsonic"
 )
 
 const usage = `usage: nowplaylist <command>
 
 commands:
   sync    copy new Last.fm plays into the local history and compare the count with Last.fm's
+  now     rank the library for this moment and replace the songs of the "Now" playlist in Navidrome
+          -n        dry run: print the picks, change nothing
+          -at TIME  rank for another moment, e.g. 2026-11-28T08:00 (local time)
 `
 
 func main() {
@@ -31,6 +36,8 @@ func main() {
 	switch os.Args[1] {
 	case "sync":
 		err = runSync(ctx)
+	case "now":
+		err = runNow(ctx, os.Args[2:])
 	default:
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
@@ -71,4 +78,37 @@ func runSync(ctx context.Context) error {
 	}
 	fmt.Printf("Last.fm reports %d scrobbles\n", total)
 	return nil
+}
+
+func runNow(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("now", flag.ContinueOnError)
+	dry := fs.Bool("n", false, "dry run")
+	atFlag := fs.String("at", "", "moment to rank for, local time (2006-01-02T15:04)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	at := time.Now()
+	if *atFlag != "" {
+		t, err := time.ParseInLocation("2006-01-02T15:04", *atFlag, time.Local)
+		if err != nil {
+			return fmt.Errorf("-at: %w", err)
+		}
+		at = t
+	}
+
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	if err := cfg.requireNavidrome(); err != nil {
+		return err
+	}
+	db, err := store.Open(cfg.DBPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	return buildNow(ctx, lastfm.NewClient(cfg.LastfmAPIKey),
+		subsonic.NewClient(cfg.NavidromeURL, cfg.NavidromeUser, cfg.NavidromePassword), db,
+		nowOptions{at: at, dryRun: *dry, out: os.Stdout, log: os.Stderr})
 }

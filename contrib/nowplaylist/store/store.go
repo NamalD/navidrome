@@ -4,6 +4,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -29,6 +30,13 @@ CREATE TABLE IF NOT EXISTS scrobbles (
 CREATE TABLE IF NOT EXISTS sync_state (
 	key   TEXT PRIMARY KEY,
 	value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS similar_cache (
+	kind       TEXT NOT NULL,    -- "track" or "artist"
+	key        TEXT NOT NULL,    -- what was looked up
+	fetched_at INTEGER NOT NULL, -- Unix seconds
+	body       TEXT NOT NULL,    -- JSON list of lastfm.Similar
+	PRIMARY KEY (kind, key)
 );
 `
 
@@ -112,12 +120,8 @@ const syncedThroughKey = "synced_through"
 // SyncedThrough is the end of the last sync that finished: every play before it has been fetched once. It is
 // zero before the first full sync completes.
 func (s *Store) SyncedThrough(ctx context.Context) (time.Time, error) {
-	var v string
-	err := s.db.QueryRowContext(ctx, `SELECT value FROM sync_state WHERE key = ?`, syncedThroughKey).Scan(&v)
-	if errors.Is(err, sql.ErrNoRows) {
-		return time.Time{}, nil
-	}
-	if err != nil {
+	v, err := s.State(ctx, syncedThroughKey)
+	if err != nil || v == "" {
 		return time.Time{}, err
 	}
 	uts, err := strconv.ParseInt(v, 10, 64)
@@ -128,7 +132,75 @@ func (s *Store) SyncedThrough(ctx context.Context) (time.Time, error) {
 }
 
 func (s *Store) SetSyncedThrough(ctx context.Context, t time.Time) error {
+	return s.SetState(ctx, syncedThroughKey, strconv.FormatInt(t.Unix(), 10))
+}
+
+// Plays returns every stored play, oldest first.
+func (s *Store) Plays(ctx context.Context) ([]lastfm.Scrobble, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT played_at, artist, track, album FROM scrobbles ORDER BY played_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []lastfm.Scrobble
+	for rows.Next() {
+		var p lastfm.Scrobble
+		var at int64
+		if err := rows.Scan(&at, &p.Artist, &p.Track, &p.Album); err != nil {
+			return nil, err
+		}
+		p.PlayedAt = time.Unix(at, 0).UTC()
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// CachedSimilar returns a Last.fm similarity answer stored less than maxAge ago. kind separates track and artist
+// lookups; key is what was looked up.
+func (s *Store) CachedSimilar(ctx context.Context, kind, key string, maxAge time.Duration, now time.Time) ([]lastfm.Similar, bool, error) {
+	var body string
+	var fetched int64
+	err := s.db.QueryRowContext(ctx, `SELECT body, fetched_at FROM similar_cache WHERE kind = ? AND key = ?`, kind, key).
+		Scan(&body, &fetched)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if now.Sub(time.Unix(fetched, 0)) > maxAge {
+		return nil, false, nil
+	}
+	var out []lastfm.Similar
+	if err := json.Unmarshal([]byte(body), &out); err != nil {
+		return nil, false, nil // unreadable entry: fetch again
+	}
+	return out, true, nil
+}
+
+func (s *Store) PutSimilar(ctx context.Context, kind, key string, sims []lastfm.Similar, now time.Time) error {
+	body, err := json.Marshal(sims)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO similar_cache (kind, key, fetched_at, body) VALUES (?, ?, ?, ?)
+		ON CONFLICT (kind, key) DO UPDATE SET fetched_at = excluded.fetched_at, body = excluded.body`,
+		kind, key, now.Unix(), string(body))
+	return err
+}
+
+// State reads a value saved with SetState; "" when there is none.
+func (s *Store) State(ctx context.Context, key string) (string, error) {
+	var v string
+	err := s.db.QueryRowContext(ctx, `SELECT value FROM sync_state WHERE key = ?`, key).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return v, err
+}
+
+func (s *Store) SetState(ctx context.Context, key, value string) error {
 	_, err := s.db.ExecContext(ctx, `INSERT INTO sync_state (key, value) VALUES (?, ?)
-		ON CONFLICT (key) DO UPDATE SET value = excluded.value`, syncedThroughKey, strconv.FormatInt(t.Unix(), 10))
+		ON CONFLICT (key) DO UPDATE SET value = excluded.value`, key, value)
 	return err
 }

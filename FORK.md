@@ -76,8 +76,9 @@ Its tests use a fake in place of Antra: `python3 -m unittest discover contrib/an
 ## Playlists from listening history
 
 `contrib/nowplaylist` is a separate Go module, not part of the Navidrome image, that runs on the desktop. It
-reads the Last.fm history and will build time-of-day playlists in Navidrome through the Subsonic API. CI runs its
-tests; how to build and configure it is in its `README.md`.
+reads the Last.fm history and keeps a public "Now: <day> <time of day>" playlist in Navidrome up to date through the
+Subsonic API, as the non-admin user `nowplaylist`, every two hours from a systemd user timer. CI runs its tests;
+how it picks songs, and how to build, install and configure it, is in its `README.md`.
 
 ## Taking a new upstream release
 
