@@ -57,7 +57,8 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
   track in the queue is downloaded ahead and starts on the sample the current one ends. It works behind the music
   player library's own `<audio>` element, which it stands in for, so the library and the rest of the UI don't
   change; internet radio still plays through the element. Repeat-one loops gaplessly too. Two tracks at different
-  sample rates still have a short gap between them (the audio clock has to restart at the new rate). On by
+  sample rates still have a short gap between them (the audio clock has to restart at the new rate). A browser
+  whose Web Audio can't decode FLAC (checked once with a tiny file) keeps the normal player. On by
   default, with a switch on the Personal page (per browser). ReplayGain is applied by the player in either case,
   and its default is now "album", which keeps the quiet and loud tracks of an album as they were mastered. Code:
   `ui/src/audioplayer/gapless` (`engine.js` is the player, `mediaFacade.js` the stand-in element).
