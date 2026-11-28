@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GaplessEngine } from './engine'
 import { attachGaplessFacade } from './mediaFacade'
 import { createSessionKeeper } from './sessionKeeper'
@@ -11,6 +11,32 @@ export const isGaplessSupported = () =>
   typeof window.AudioContext === 'function' &&
   typeof window.ReadableStream === 'function' &&
   typeof window.HTMLMediaElement === 'function'
+
+// 2 ms of silence as the engine hands FLAC to the browser: a bare STREAMINFO header and whole frames.
+const PROBE_FLAC =
+  'ZkxhQ4AAACIAQABAAAAMAAAMCsRA8AAAAAAAAAAAAAAAAAAAAAAAAAAA//hpCAA/oAAAAI45//hpCAEXbQAAAB7b'
+
+let flacProbe = null
+
+// Whether this browser's Web Audio can decode FLAC. Not every one can (WebKit on Linux needs GStreamer's FLAC
+// plugin), and without it the engine could play nothing at all, so the player then stays on the element.
+export const canDecodeFlac = () => {
+  if (!flacProbe) {
+    flacProbe = (async () => {
+      try {
+        const ctx = new window.OfflineAudioContext(1, 1, 44100)
+        const bytes = Uint8Array.from(window.atob(PROBE_FLAC), (c) =>
+          c.charCodeAt(0),
+        )
+        const buffer = await ctx.decodeAudioData(bytes.buffer)
+        return buffer.length > 0
+      } catch {
+        return false
+      }
+    })()
+  }
+  return flacProbe
+}
 
 // The engine decodes FLAC itself, so it asks the server for FLAC whatever the browser could play: FLAC files
 // as they are, everything else (ALAC, WAV, MP3...) converted to FLAC. Lossless sources stay lossless.
@@ -75,7 +101,8 @@ const trackFor = (item, gainInfo) => ({
 })
 
 // Plays songs in the player gaplessly (see engine.js) while `enabled`, by putting the engine behind the
-// player's <audio> element (mediaFacade.js). Radio keeps playing through the element.
+// player's <audio> element (mediaFacade.js). Radio keeps playing through the element. Returns true while it
+// does, false when it doesn't, and null while it is still finding out whether the browser can decode FLAC.
 export const useGaplessPlayback = ({
   audioInstance,
   playerState,
@@ -85,9 +112,20 @@ export const useGaplessPlayback = ({
   const engineRef = useRef(null)
   const latest = useRef({ playerState, gainInfo })
   latest.current = { playerState, gainInfo }
+  const wanted = enabled && !!audioInstance && isGaplessSupported()
+  const [decodes, setDecodes] = useState(null)
 
   useEffect(() => {
-    if (!enabled || !audioInstance || !isGaplessSupported()) return undefined
+    if (!wanted || decodes !== null) return undefined
+    let live = true
+    canDecodeFlac().then((ok) => live && setDecodes(ok))
+    return () => {
+      live = false
+    }
+  }, [wanted, decodes])
+
+  useEffect(() => {
+    if (!wanted || !decodes) return undefined
     const engine = new GaplessEngine()
     const keeper = createSessionKeeper()
     const resolveTrack = (src) => {
@@ -110,7 +148,7 @@ export const useGaplessPlayback = ({
       engine.destroy()
       keeper.destroy()
     }
-  }, [enabled, audioInstance])
+  }, [wanted, decodes, audioInstance])
 
   // Line up the next track whenever the queue, the current track or the repeat mode changes.
   useEffect(() => {
@@ -118,7 +156,7 @@ export const useGaplessPlayback = ({
     if (!engine) return
     const next = nextQueueItem(playerState)
     engine.setNext(next ? trackFor(next, gainInfo) : null)
-  }, [playerState, gainInfo, enabled, audioInstance])
+  }, [playerState, gainInfo, wanted, decodes, audioInstance])
 
   // Apply ReplayGain to the playing track when the setting changes.
   useEffect(() => {
@@ -128,7 +166,8 @@ export const useGaplessPlayback = ({
       return
     }
     engine.setGain(current.trackId, calculateGain(gainInfo, current.song || {}))
-  }, [playerState, gainInfo, enabled, audioInstance])
+  }, [playerState, gainInfo, wanted, decodes, audioInstance])
 
-  return enabled && !!audioInstance && isGaplessSupported()
+  if (!wanted) return false
+  return decodes
 }

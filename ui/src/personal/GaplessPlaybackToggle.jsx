@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslate } from 'react-admin'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -7,7 +8,7 @@ import {
   Switch,
 } from '@material-ui/core'
 import { setGaplessPlayback } from '../actions'
-import { isGaplessSupported } from '../audioplayer/gapless'
+import { canDecodeFlac, isGaplessSupported } from '../audioplayer/gapless'
 
 export const GaplessPlaybackToggle = () => {
   const translate = useTranslate()
@@ -15,7 +16,17 @@ export const GaplessPlaybackToggle = () => {
   const enabled = useSelector(
     (state) => state.settings.gaplessPlayback !== false,
   )
-  const supported = isGaplessSupported()
+  const [decodes, setDecodes] = useState(null)
+  useEffect(() => {
+    if (!isGaplessSupported()) return undefined
+    let live = true
+    canDecodeFlac().then((ok) => live && setDecodes(ok))
+    return () => {
+      live = false
+    }
+  }, [])
+  // Until the check is done, assume it will pass, so the switch doesn't flicker.
+  const supported = isGaplessSupported() && decodes !== false
 
   return (
     <FormControl>

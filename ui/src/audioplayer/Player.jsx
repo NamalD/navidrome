@@ -191,7 +191,7 @@ const Player = () => {
     if (
       context === null &&
       audioInstance &&
-      !gapless &&
+      gapless === false &&
       config.enableReplayGain &&
       'AudioContext' in window &&
       (gainInfo.gainMode === 'album' || gainInfo.gainMode === 'track')

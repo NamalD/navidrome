@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { nextQueueItem, songIdFromStreamUrl } from './index'
 
 describe('songIdFromStreamUrl', () => {
@@ -44,5 +44,53 @@ describe('nextQueueItem', () => {
   it('has nothing to line up for radio or an unknown current item', () => {
     expect(at(1, 'order', [{ uuid: 1 }, { uuid: 2, isRadio: true }])).toBeNull()
     expect(at(9, 'order')).toBeNull()
+  })
+})
+
+describe('canDecodeFlac', () => {
+  it('decodes the probe with Web Audio when the browser can', async () => {
+    vi.resetModules()
+    const { FakeAudioContext } = await import('./testHelpers')
+    const decoded = []
+    vi.stubGlobal(
+      'OfflineAudioContext',
+      class extends FakeAudioContext {
+        constructor(channels, length, rate) {
+          super(rate)
+        }
+        async decodeAudioData(buffer) {
+          const result = await super.decodeAudioData(buffer) // parses it as the engine's pieces are
+          decoded.push(result.length)
+          return result
+        }
+      },
+    )
+    try {
+      const { canDecodeFlac } = await import('./index')
+      expect(await canDecodeFlac()).toBe(true)
+      expect(decoded).toEqual([88])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('says no when decoding fails or Web Audio is missing', async () => {
+    for (const ctx of [
+      class {
+        decodeAudioData() {
+          return Promise.reject(new DOMException('Decoding failed'))
+        }
+      },
+      undefined,
+    ]) {
+      vi.resetModules()
+      vi.stubGlobal('OfflineAudioContext', ctx)
+      try {
+        const { canDecodeFlac } = await import('./index')
+        expect(await canDecodeFlac()).toBe(false)
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    }
   })
 })

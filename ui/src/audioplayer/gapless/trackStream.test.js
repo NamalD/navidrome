@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { TrackStream } from './trackStream'
-import { fakeFetch, fixture, until } from './testHelpers'
+import { fakeFetch, fixture, flush, until } from './testHelpers'
 
 const tone = fixture('tone.flac')
 
@@ -57,7 +57,12 @@ describe('TrackStream', () => {
       holdAfterSeconds: 0.1,
     }).start({ hold: true })
     await until(() => s.secondsKnown >= 0.1)
-    await until(() => false) // let it run on as far as it would
+    // let it run on as far as it would: until it has stopped growing for a while
+    for (let last = -1, still = 0; still < 20; ) {
+      await flush()
+      still = s.length === last ? still + 1 : 0
+      last = s.length
+    }
     expect(s.done).toBe(false)
     expect(s.length).toBeLessThan(tone.length)
     s.resume()
