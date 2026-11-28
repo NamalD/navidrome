@@ -122,6 +122,7 @@ type configOptions struct {
 	PID                             pidOptions          `json:",omitzero"`
 	Inspect                         inspectOptions      `json:",omitzero"`
 	Downloader                      downloaderOptions   `json:",omitzero"`
+	DJ                              djOptions           `json:",omitzero"`
 	Subsonic                        subsonicOptions     `json:",omitzero"`
 	Transcoding                     transcodingOptions  `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
@@ -285,6 +286,12 @@ type inspectOptions struct {
 type downloaderOptions struct {
 	// URL of the download service (contrib/antra-downloader). Empty disables adding music from the web UI.
 	URL string
+}
+
+type djOptions struct {
+	// UploadKey lets contrib/djanalysis upload song analyses for the DJ mixer (sent as a bearer token to
+	// /api/dj/upload). Empty disables uploads.
+	UploadKey string
 }
 
 type pluginsOptions struct {
@@ -1111,6 +1118,7 @@ func setViperDefaults() {
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("downloader.url", "")
+	viper.SetDefault("dj.uploadkey", "")
 	viper.SetDefault("plugins.folder", "")
 	viper.SetDefault("plugins.enabled", true)
 	viper.SetDefault("plugins.cachesize", "200MB")

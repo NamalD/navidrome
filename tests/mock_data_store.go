@@ -31,6 +31,7 @@ type MockDataStore struct {
 	MockedArtwork        model.ArtworkRepository
 	MockedArtworkQueue   model.ArtworkQueueRepository
 	MockedFetchedLyrics  model.FetchedLyricsRepository
+	MockedDJAnalysis     model.DJAnalysisRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
 
@@ -333,6 +334,19 @@ func (db *MockDataStore) FetchedLyrics(ctx context.Context) model.FetchedLyricsR
 	}
 	db.MockedFetchedLyrics = &MockFetchedLyricsRepo{Data: map[string]model.LyricList{}}
 	return db.MockedFetchedLyrics
+}
+
+func (db *MockDataStore) DJAnalysis(ctx context.Context) model.DJAnalysisRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedDJAnalysis != nil {
+		return db.MockedDJAnalysis
+	}
+	if db.RealDS != nil {
+		return db.RealDS.DJAnalysis(ctx)
+	}
+	db.MockedDJAnalysis = &MockDJAnalysisRepo{Data: map[string]model.DJAnalysis{}}
+	return db.MockedDJAnalysis
 }
 
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {

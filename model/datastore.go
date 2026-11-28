@@ -43,6 +43,7 @@ type DataStore interface {
 	Artwork(ctx context.Context) ArtworkRepository
 	ArtworkQueue(ctx context.Context) ArtworkQueueRepository
 	FetchedLyrics(ctx context.Context) FetchedLyricsRepository
+	DJAnalysis(ctx context.Context) DJAnalysisRepository
 
 	Resource(ctx context.Context, model any) ResourceRepository
 

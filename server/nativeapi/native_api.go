@@ -63,6 +63,7 @@ func (api *Router) routes() http.Handler {
 
 	// Public
 	api.RX(r, "/translation", newTranslationRepository, false)
+	api.addDJUploadRoute(r) // has its own key
 
 	// Protected
 	r.Group(func(r chi.Router) {
@@ -91,6 +92,7 @@ func (api *Router) routes() http.Handler {
 		api.addKeepAliveRoute(r)
 		api.addInsightsRoute(r)
 		api.addQuickConnectRoute(r)
+		api.addDJAnalysisRoute(r)
 
 		r.With(adminOnlyMiddleware).Group(func(r chi.Router) {
 			api.addInspectRoute(r)

@@ -96,6 +96,16 @@ reads the Last.fm history and keeps a public "Now: <day> <time of day>" playlist
 Subsonic API, as the non-admin user `nowplaylist`, every two hours from a systemd user timer. CI runs its tests;
 how it picks songs, and how to build, install and configure it, is in its `README.md`.
 
+## DJ mixing
+
+Work in progress (backlog #10–#14): pick a song and the web player mixes a set from it, beatmatched and key-matched,
+choosing each next song as it plays. Navidrome stores per-song analysis but never analyses audio:
+`contrib/djanalysis` does that on the desktop GPU and uploads it. The table `media_file_dj_analysis` is created
+at startup like the lyrics index. `PUT /api/dj/upload/{id}` and `GET /api/dj/upload` take `DJ.UploadKey`
+(`ND_DJ_UPLOADKEY`) as a bearer token instead of a login and don't exist without it; `GET /api/dj/analysis/{id}`
+serves a song's analysis, minus its embedding, to logged-in users. Code: `db/dj_analysis.go`,
+`persistence/dj_analysis_repository.go`, `server/nativeapi/dj.go`.
+
 ## Taking a new upstream release
 
 ```sh

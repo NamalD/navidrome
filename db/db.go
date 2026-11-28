@@ -112,6 +112,9 @@ func Init(ctx context.Context) func() {
 	if err = ensureLyricsSearch(ctx, db); err != nil {
 		log.Fatal(ctx, "Failed to set up the lyrics search index", err)
 	}
+	if err = ensureDJAnalysis(ctx, db); err != nil {
+		log.Fatal(ctx, "Failed to set up the DJ analysis table", err)
+	}
 
 	if hasSchemaChanges {
 		log.Debug(ctx, "Running ANALYZE after schema changes")

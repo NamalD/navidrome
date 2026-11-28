@@ -110,6 +110,10 @@ func (s *SQLStore) FetchedLyrics(ctx context.Context) model.FetchedLyricsReposit
 	return NewFetchedLyricsRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) DJAnalysis(ctx context.Context) model.DJAnalysisRepository {
+	return NewDJAnalysisRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
