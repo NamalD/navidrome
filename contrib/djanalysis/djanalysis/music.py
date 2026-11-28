@@ -84,13 +84,50 @@ def phrase_boundaries(bar_features: np.ndarray, min_bars: int = 8, grid: int = 4
     return sorted(out)
 
 
-def fit_grid(beats: np.ndarray, window: int = 32) -> dict | None:
-    """Fits a beat grid that survives the tracker hopping between half and double time.
+SNAP = 0.2  # of a beat: how far off the grid a detected beat may be and still count
 
-    Each beat interval is counted as 1, 2 or ½ beats of one period (the median interval, folded), giving every beat
-    an index on a single grid. A straight line through (index, time) gives the tempo and the first beat's time;
-    the steadiness is the median, over windows of `window` beats, of how far beats sit from a local straight line
-    (seconds). Live drummers drift over a song but stay steady over a few bars, which is what a blend needs.
+
+def _refit(beats: np.ndarray, t0: float, period: float, max_k: float) -> tuple[float, float, np.ndarray] | None:
+    """Least-squares line t = t0 + k * period through the beats within SNAP of the grid and max_k beats of t0."""
+    k = np.round((beats - t0) / period)
+    on = (np.abs(k) <= max_k) & (np.abs(beats - (t0 + k * period)) <= SNAP * period)
+    if on.sum() < 4:
+        return None
+    slope, intercept = np.polyfit(k[on], beats[on], 1)
+    return float(intercept), float(slope), on
+
+
+def majority_grid(beats: np.ndarray, anchors: int = 16) -> tuple[float, float, np.ndarray] | None:
+    """The straight beat grid (t0, period, mask of beats on it) that most beats sit on.
+
+    Beats are placed on it by their distance in periods, not counted, so a beat the tracker missed or added
+    doesn't shift the ones after it; and the grid is fitted near an anchor first and widened, because the first
+    period (the median gap, in whole 20 ms frames) can be a few percent off. Anchors spread through the song
+    vote: a stretch the tracker spent on the off-beat (a drumless intro, say) is off the winner by half a beat.
+    The browser's mixer fits grids the same way (ui/src/audioplayer/dj/warp.js).
+    """
+    if len(beats) < 8:
+        return None
+    period0 = float(np.median(np.diff(beats)))
+    best = None
+    for a in np.linspace(0, len(beats) - 1, min(anchors, len(beats))).round().astype(int):
+        g: tuple[float, float, np.ndarray] | None = (float(beats[a]), period0, np.ones(0, bool))
+        for max_k in (4, 8, 16, 32, 64, 128, 256, 512, np.inf):
+            for _ in range(2):
+                g = g and _refit(beats, g[0], g[1], max_k)
+        if g and (best is None or g[2].sum() > best[2].sum()):
+            best = g
+    return best
+
+
+def fit_grid(beats: np.ndarray, window: int = 32) -> dict | None:
+    """Fits a beat grid that survives the tracker hopping between half and double time, or onto the off-beat.
+
+    The tempo and first beat come from the grid most beats sit on (majority_grid). The steadiness is separate:
+    each beat interval is counted as 1, 2 or ½ beats of one period (the median interval, folded), giving every
+    beat an index; local_jitter is the median, over windows of `window` beats, of how far beats sit from a
+    local straight line (seconds). Live drummers drift over a song but stay steady over a few bars, which is
+    what a blend needs.
     """
     if len(beats) < 8:
         return None
@@ -99,20 +136,27 @@ def fit_grid(beats: np.ndarray, window: int = 32) -> dict | None:
     # Fold: an interval near period/2 is half a beat, near 2*period two beats.
     steps = np.maximum(np.round(ibi / period * 2) / 2, 0.5)
     idx = np.concatenate([[0.0], np.cumsum(steps)])
-    slope, intercept = np.polyfit(idx, beats, 1)
     local = []
     for s in range(0, len(beats) - window + 1, window // 2):
         i, t = idx[s:s + window], beats[s:s + window]
         a, b = np.polyfit(i, t, 1)
         local.append(float(np.sqrt(np.mean((t - (a * i + b)) ** 2))))
     if not local:
-        a, b = slope, intercept
+        a, b = np.polyfit(idx, beats, 1)
         local = [float(np.sqrt(np.mean((beats - (a * idx + b)) ** 2)))]
     half_time_share = float(np.mean(steps != 1))
+    g = majority_grid(beats)
+    if g is None:
+        return None
+    t0, slope, on = g
+    first = t0 + np.round((beats[0] - t0) / slope) * slope
+    k = np.round((beats - t0) / slope)
     return {
-        "bpm": round(60.0 / float(slope), 3),
-        "first_beat": round(float(intercept), 4),
+        "bpm": round(60.0 / slope, 3),
+        "first_beat": round(float(first), 4),
         "local_jitter": round(float(np.median(local)), 4),
-        "drift": round(float(np.sqrt(np.mean((beats - (slope * idx + intercept)) ** 2))), 4),
+        # How far all the beats sit from the one grid (s), and how many sit on it.
+        "drift": round(float(np.sqrt(np.mean((beats - (t0 + k * slope)) ** 2))), 4),
+        "on_grid": round(float(on.mean()), 3),
         "octave_switch_share": round(half_time_share, 3),
     }

@@ -46,6 +46,7 @@ Settings come from `~/.config/nowplaylist/`, shared with nowplaylist: the Navidr
 
 ```sh
 ~/hdd/djanalysis/venv/bin/python -m djanalysis run [--limit N] [--id SONG_ID] [--force]
+~/hdd/djanalysis/venv/bin/python -m djanalysis regrid [--dry-run]
 ~/hdd/djanalysis/venv/bin/python -m djanalysis upload
 journalctl --user -u djanalysis
 ```
@@ -54,3 +55,11 @@ The timer runs both every three hours. `run` won't start, and stops within ten s
 GPU (a Proton `.exe` or anything under `steamapps` in `nvidia-smi`), exiting 75; the next timer run carries on.
 The whole library (657 songs) took 46 minutes, about 4 s a song, mostly CPU. `run -n` only reports how many
 songs need analysing.
+
+`regrid` refits every cached analysis's `bpm` and `grid` from its stored beats, with no audio and no GPU; run it
+(then `upload`) after changing `fit_grid`. The first version counted beat intervals, so each place the tracker
+hopped into double time or onto the off-beat nudged the count, and 171 songs came out over 1% fast (Born Slippy
+142.2 instead of 140); the grid is now the one most beats sit on, placed by time.
+
+Run the tests with `make test`, not a bare `uv run`: the Makefile points uv's venv and cache at `~/hdd`, and
+without it uv builds a 7 GB venv on `/home`.

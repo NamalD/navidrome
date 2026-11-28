@@ -61,6 +61,22 @@ def test_fit_grid_handles_half_time_switches_and_drift():
     assert g["drift"] > g["local_jitter"] * 5
 
 
+def test_fit_grid_is_exact_through_frame_rounded_beats_with_strays_and_an_off_beat_intro():
+    from djanalysis.music import fit_grid
+
+    # 139.97 BPM as beat_this writes it (20 ms frames), with a missed beat every 9, two strays, a double-time
+    # stretch, and an intro tracked half a beat late. Cumulative counting gave 142.2 on songs like this.
+    p = 60 / 139.97
+    true = 0.31 + np.arange(500) * p
+    beats = [t + (p / 2 if t < 11 else 0) for i, t in enumerate(true) if i % 9 != 4]
+    beats += [20.11, 25.5] + list(true[300:340] + p / 2)
+    beats = np.round(np.sort(beats) * 50) / 50
+    g = fit_grid(beats)
+    assert abs(g["bpm"] - 139.97) < 0.01
+    assert abs((g["first_beat"] - 0.31 + p / 2) % p - p / 2) < 0.003
+    assert 0.6 < g["on_grid"] < 0.95
+
+
 def test_fit_grid_flags_free_time():
     from djanalysis.music import fit_grid
 

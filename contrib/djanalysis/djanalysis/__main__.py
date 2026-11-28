@@ -1,6 +1,7 @@
 """djanalysis: analyse the Navidrome library for the DJ mixer.
 
     djanalysis run [--limit N] [--id SONG_ID ...] [--force] [--dry-run]
+    djanalysis regrid [--dry-run]
     djanalysis upload
 
 Downloads each song that has no current analysis, analyses it on the GPU, saves the result as
@@ -104,6 +105,40 @@ def run(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def regrid(args: argparse.Namespace) -> int:
+    """Refits every cached analysis's beat grid (bpm, grid) from its stored beats, after a change to fit_grid.
+
+    Needs no audio and no GPU; the beats themselves are kept. Run `upload` afterwards.
+    """
+    import numpy as np
+
+    from .music import fit_grid
+
+    changed = 0
+    shifts = []
+    files = sorted(CACHE.glob("*.json"))
+    for f in files:
+        data = json.loads(f.read_text())
+        beats = np.asarray(data.get("beats") or [], dtype=float)
+        grid = fit_grid(beats)
+        bpm = grid["bpm"] if grid else 0.0
+        if grid == data.get("grid") and bpm == data.get("bpm"):
+            continue
+        if data.get("bpm") and bpm:
+            shifts.append(bpm / data["bpm"] - 1)
+        changed += 1
+        if args.dry_run:
+            continue
+        data["grid"], data["bpm"] = grid, bpm
+        tmp_out = f.with_suffix(".json.tmp")
+        tmp_out.write_text(json.dumps(data, separators=(",", ":"), allow_nan=False))
+        tmp_out.replace(f)
+    s = np.abs(np.array(shifts)) if shifts else np.zeros(1)
+    print(f"{len(files)} analyses, {changed} {'would change' if args.dry_run else 'refitted'}; "
+          f"BPM moved by a median {np.median(s) * 100:.2f}%, over 1% in {int((s > 0.01).sum())}")
+    return 0
+
+
 def upload(_: argparse.Namespace) -> int:
     """Sends every cached analysis whose checksum differs from the one Navidrome holds."""
     import hashlib
@@ -136,9 +171,11 @@ def main() -> int:
     r.add_argument("--id", action="append", default=[])
     r.add_argument("--force", action="store_true")
     r.add_argument("-n", "--dry-run", action="store_true", help="only say how many songs need analysing")
+    g = sub.add_parser("regrid", help="refit cached beat grids from their beats (no audio needed)")
+    g.add_argument("-n", "--dry-run", action="store_true", help="only say how many would change")
     sub.add_parser("upload", help="send new and changed analyses to Navidrome")
     args = p.parse_args()
-    return {"run": run, "upload": upload}[args.cmd](args)
+    return {"run": run, "regrid": regrid, "upload": upload}[args.cmd](args)
 
 
 if __name__ == "__main__":
