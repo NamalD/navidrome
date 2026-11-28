@@ -68,7 +68,10 @@ const useStyles = makeStyles(
 const secondaryText = (section, record, translate, query) => {
   const { resource } = section
   if (section.key === 'lyrics') {
-    const line = matchingLyricsLine(record.lyrics, query)
+    // Lyrics from the tags, or else those fetched from a lyrics plugin
+    const line =
+      matchingLyricsLine(record.lyrics, query) ||
+      matchingLyricsLine(record.fetchedLyrics, query)
     if (line) return `“${line}”`
   }
   switch (resource) {

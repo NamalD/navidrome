@@ -79,6 +79,7 @@ type MediaFile struct {
 	Compilation          bool     `structs:"compilation" json:"compilation"`
 	Comment              string   `structs:"comment" json:"comment,omitempty"`
 	Lyrics               string   `structs:"lyrics" json:"lyrics"`
+	FetchedLyrics        string   `structs:"-" json:"fetchedLyrics,omitempty" hash:"ignore"` // JSON like Lyrics; see FetchedLyricsRepository. Only the REST song list fills it in.
 	BPM                  *int     `structs:"bpm" json:"bpm,omitempty"`
 	ExplicitStatus       string   `structs:"explicit_status" json:"explicitStatus"`
 	CatalogNum           string   `structs:"catalog_num" json:"catalogNum,omitempty"`

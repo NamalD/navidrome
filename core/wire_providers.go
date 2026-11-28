@@ -37,5 +37,6 @@ var Set = wire.NewSet(
 	quickconnect.GetInstance,
 	metrics.GetInstance,
 	lyrics.NewLyrics,
+	lyrics.NewFetcher,
 	downloader.New,
 )

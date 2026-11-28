@@ -91,6 +91,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBAnalyzer(ctx))
 	g.Go(startPluginManager(ctx))
+	g.Go(scheduleLyricsFetch(ctx))
 	artworkWorker := CreateArtworkWorker()
 	g.Go(startArtworkWorker(ctx, artworkWorker))
 	g.Go(scheduleArtworkHousekeeping(ctx, artworkWorker))
@@ -419,6 +420,35 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 
 		if err := worker.ReconcileConfig(ctx); err != nil {
 			log.Error(ctx, "Error checking the artwork config fingerprint", err)
+		}
+		return nil
+	}
+}
+
+// scheduleLyricsFetch fetches, on a schedule and once at startup, the lyrics of songs with none in their
+// tags from the other lyrics sources, so they can be searched.
+func scheduleLyricsFetch(ctx context.Context) func() error {
+	return func() error {
+		schedule := conf.Server.LyricsFetchSchedule
+		if schedule == "" || schedule == "0" {
+			log.Info(ctx, "Background lyrics fetching is DISABLED")
+			return nil
+		}
+		fetcher := CreateLyricsFetcher()
+		fetcher.Pause = scanner.IsScanning
+		run := func() {
+			if err := fetcher.Run(ctx); err != nil {
+				log.Error(ctx, "Error fetching lyrics in the background", err)
+			}
+		}
+		log.Info(ctx, "Scheduling background lyrics fetching", "schedule", schedule)
+		if _, err := scheduler.GetInstance().Add(schedule, run); err != nil {
+			log.Error(ctx, "Error scheduling background lyrics fetching", err)
+			return nil
+		}
+		// Lyrics plugins load in the background at startup
+		if fetcher.WaitForSources(ctx, 2*time.Minute) {
+			run()
 		}
 		return nil
 	}

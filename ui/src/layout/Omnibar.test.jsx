@@ -175,6 +175,24 @@ describe('<Omnibar />', () => {
       expect(screen.getByText("“But I'm a creep, I'm a weirdo”")).toBeTruthy()
     })
 
+    it('show the matching line of lyrics fetched by a plugin', async () => {
+      getList.mockImplementation((resource, { filter }) => {
+        const wire = {
+          id: 's4',
+          title: 'Through the High Wire',
+          lyrics: '[]',
+          fetchedLyrics: JSON.stringify([
+            { lang: 'eng', line: [{ value: 'Every single night' }] },
+          ]),
+        }
+        const data = filter.lyrics ? [wire] : []
+        return Promise.resolve({ data, total: data.length })
+      })
+      await type('single night')
+
+      expect(await screen.findByText('“Every single night”')).toBeTruthy()
+    })
+
     it('are not repeated when the title matched too', async () => {
       await type('im a weirdo')
       await screen.findByText('omnibar.lyrics')

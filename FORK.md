@@ -36,12 +36,17 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
   opens its page; "See all" opens that list filtered by the query. Code: `ui/src/layout/Omnibar.jsx` and
   `useOmniSearch.js` beside it.
 - **Search by lyrics.** The omnibar also lists the songs whose lyrics contain the words typed, with the line that
-  matched, and the song list takes a `lyrics` filter ("See all" uses it). Only lyrics stored in the database are
-  searched, which are the ones embedded in the files' tags: lyrics a plugin fetches when a song is played are not.
-  The index is the FTS5 table `media_file_lyrics_fts`, kept current by triggers on `media_file`. It is created at
-  startup rather than by a migration, because goose stops the server when the database is ahead of a migration it
-  has not applied, as it would be for any upstream migration written before ours and released after. Code:
-  `db/lyrics_search.go`, `persistence/sql_search_lyrics.go` and `ui/src/layout/lyricsMatch.js`.
+  matched, and the song list takes a `lyrics` filter ("See all" uses it). It searches the lyrics in each song's
+  tags or, for a song without any, those fetched for it in the background: once at startup and then on
+  `LyricsFetchSchedule` (`ND_LYRICSFETCHSCHEDULE`, default `@every 1h`, `0` turns it off), every song without
+  lyrics in its tags goes through the other `LyricsPriority` sources (the `nd-lyrics` plugin here, one song a
+  second), and the result is kept in `media_file_fetched_lyrics`. A song is fetched again when it changes, and
+  one with nothing found (or a failed fetch, as plugins report "no lyrics" as an error) a week later. The index
+  is the FTS5 table `media_file_lyrics_fts`, kept current by triggers on both tables. Both are created at startup
+  rather than by a migration, because goose stops the server when the database is ahead of a migration it has
+  not applied, as it would be for any upstream migration written before ours and released after. Code:
+  `db/lyrics_search.go`, `core/lyrics/fetcher.go`, `persistence/fetched_lyrics_repository.go`,
+  `persistence/sql_search_lyrics.go` and `ui/src/layout/lyricsMatch.js`.
 
 ## Build and deploy
 

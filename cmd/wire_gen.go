@@ -224,6 +224,17 @@ func GetPlaybackServer() playback.PlaybackServer {
 	return playbackServer
 }
 
+func CreateLyricsFetcher() *lyrics.Fetcher {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	broker := events.GetBroker()
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
+	fetcher := lyrics.NewFetcher(dataStore, lyricsLyrics, manager)
+	return fetcher
+}
+
 func CreateArtworkWorker() *artwork.Worker {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)

@@ -104,6 +104,59 @@ var _ = Describe("lyrics filter", func() {
 		})
 	})
 
+	Context("with lyrics fetched for a song without any in its tags", func() {
+		var song model.MediaFile
+		var fetched model.FetchedLyricsRepository
+
+		BeforeEach(func() {
+			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+			fetched = NewFetchedLyricsRepository(ctx, GetDBXBuilder())
+			song = mf(model.MediaFile{ID: "lyrics-search-fetched", Title: "Untitled", LibraryID: 1, Lyrics: "[]"})
+			Expect(mr.Put(&song)).To(Succeed())
+			DeferCleanup(func() { _ = mr.Delete(song.ID) })
+			Expect(fetched.Put(song.ID, model.LyricList{{Lang: "eng", Line: []model.Line{
+				{Value: "Through the high wire"}, {Value: "Every single night"},
+			}}})).To(Succeed())
+		})
+
+		It("finds the song by them", func() {
+			Expect(byLyrics("high wire")).To(Equal([]string{song.ID}))
+		})
+
+		It("returns them with the song", func() {
+			res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				Filters: map[string]any{"lyrics": "high wire"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.(model.MediaFiles)[0].FetchedLyrics).To(ContainSubstring("Through the high wire"))
+		})
+
+		It("follows a new fetch", func() {
+			Expect(fetched.Put(song.ID, nil)).To(Succeed())
+			Expect(byLyrics("high wire")).To(BeEmpty())
+		})
+
+		It("prefers lyrics that appear in the tags later", func() {
+			song.Lyrics = lyricsOf("Now embedded in the file")
+			Expect(mr.Put(&song)).To(Succeed())
+			Expect(byLyrics("high wire")).To(BeEmpty())
+			Expect(byLyrics("embedded file")).To(Equal([]string{song.ID}))
+
+			song.Lyrics = "[]"
+			Expect(mr.Put(&song)).To(Succeed())
+			Expect(byLyrics("high wire")).To(Equal([]string{song.ID}))
+		})
+
+		It("forgets them when the song is deleted", func() {
+			Expect(mr.Delete(song.ID)).To(Succeed())
+			Expect(byLyrics("high wire")).To(BeEmpty())
+			var count int
+			Expect(GetDBXBuilder().NewQuery("SELECT count(*) FROM media_file_fetched_lyrics WHERE media_file_id = {:id}").
+				Bind(map[string]any{"id": song.ID}).Row(&count)).To(Succeed())
+			Expect(count).To(BeZero())
+		})
+	})
+
 	It("matches CJK lyrics by substring", func() {
 		song := mf(model.MediaFile{ID: "lyrics-search-cjk", Title: "Untitled", LibraryID: 1,
 			Lyrics: lyricsOf("残酷な天使のように")})

@@ -145,6 +145,12 @@ func GetPlaybackServer() playback.PlaybackServer {
 	))
 }
 
+func CreateLyricsFetcher() *lyrics.Fetcher {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
 func CreateArtworkWorker() *artwork.Worker {
 	panic(wire.Build(
 		allProviders,

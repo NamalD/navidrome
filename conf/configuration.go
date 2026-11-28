@@ -86,6 +86,7 @@ type configOptions struct {
 	ArtistImageFolder               string
 	DiscArtPriority                 string
 	LyricsPriority                  string
+	LyricsFetchSchedule             string
 	EnableGravatar                  bool
 	EnableFavourites                bool
 	EnableStarRating                bool
@@ -1022,6 +1023,7 @@ func setViperDefaults() {
 	viper.SetDefault("artistimagefolder", "")
 	viper.SetDefault("discartpriority", "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded")
 	viper.SetDefault("lyricspriority", ".ttml,.yaml,.yml,.elrc,.lrc,.srt,.txt,embedded")
+	viper.SetDefault("lyricsfetchschedule", "@every 1h")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
