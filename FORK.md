@@ -98,8 +98,11 @@ how it picks songs, and how to build, install and configure it, is in its `READM
 
 ## DJ mixing
 
-Work in progress (backlog #10–#14): pick a song and the web player mixes a set from it, beatmatched and key-matched,
-choosing each next song as it plays. Navidrome stores per-song analysis but never analyses audio:
+"Start DJ Mix" in a song's menu (song lists, albums, playlists) plays that song in DJ mode, and the disc button in the
+player bar turns DJ mode on or off for whatever is playing. In DJ mode the web player mixes each song into the next,
+beatmatched and key-matched, and keeps the queue one song ahead: when the playing song is the last, it asks the
+planner for the next and adds it (endless play stands aside); when you queued one yourself, it mixes into that.
+Each song still scrobbles as usual. Navidrome stores per-song analysis but never analyses audio:
 `contrib/djanalysis` does that on the desktop GPU and uploads it. The table `media_file_dj_analysis` is created
 at startup like the lyrics index. `PUT /api/dj/upload/{id}` and `GET /api/dj/upload` take `DJ.UploadKey`
 (`ND_DJ_UPLOADKEY`) as a bearer token instead of a login and don't exist without it; `GET /api/dj/analysis/{id}`
@@ -111,7 +114,25 @@ scores every analysed song the user can see on sound (cosine of Discogs-EffNet e
 ±8% after folding half/double time) and key (Camelot wheel, transposing up to a semitone), picks at random among the
 best five, and returns the song with its transition: a phrase-aligned blend of 4–16 bars (at most 32 s) with a bass
 swap halfway, an echo-out when tempos are too far apart, or a 12 s fade when either song has no steady beat. Times
-are seconds into each song as recorded. Analyses stay in memory and reload every 10 minutes.
+are seconds into each song as recorded. Analyses stay in memory and reload every 10 minutes. `next=<id>` plans
+the transition into that song instead of choosing one.
+
+The mixer is `ui/src/audioplayer/dj`: `engine.js` has the gapless engine's interface, so the same `<audio>` facade
+puts it behind the player. Each song plays on a deck (`deck.js`): its FLAC stream is decoded piece by piece into a
+signalsmith-stretch node, which plays it at the planned rate and transposition, then through a trim (levelled to
+-14 LUFS from the analysis), a low shelf for the bass swap, a fader and an echo send. `timeline.js` turns a plan into
+the automation on both decks. Streams are requested as 44.1 kHz/16-bit FLAC (a transcode profile limit), so the
+mixer's context runs at 44.1 kHz and never resamples. signalsmith-stretch is vendored in `dj/vendor/` with upstream
+PR #30 applied, because 1.3.2 goes silent on input added in several pieces (backlog #15). Songs without an analysis
+still play in DJ mode, one after the other with no mix.
+
+A blend is locked onto the beats in the browser (`warp.js`), since the plan's single detected downbeats are a frame
+(20 ms) off and beat_this sits on the off-beat in some drumless intros. Each song gets a straight beat grid through
+its beats around the blend, by the phase most beats agree on, and its bars from most downbeats; the next song plays
+at the rate that matches the grids, from a bar start onto a bar start. Measured from recordings in Chrome and
+Firefox, beats and bars land within 5 ms. A blend whose beats can't be locked (no steady grid, or a stretch the
+tracker hears in 3:2) becomes an echo-out instead. The analysis's BPM (`fit_grid`) is the same kind of grid; before
+2026-11-28 it counted beat intervals and ran over 1% fast on 171 songs, and `djanalysis regrid` refitted them.
 
 ## Taking a new upstream release
 

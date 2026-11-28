@@ -6,11 +6,13 @@ import { GlobalHotKeys } from 'react-hotkeys'
 import {
   Avatar,
   ClickAwayListener,
+  IconButton,
   InputBase,
   Link,
   List,
   ListItem,
   ListItemAvatar,
+  ListItemSecondaryAction,
   ListItemText,
   ListSubheader,
   Paper,
@@ -22,12 +24,14 @@ import {
 } from '@material-ui/core'
 import { alpha } from '@material-ui/core/styles'
 import SearchIcon from '@material-ui/icons/Search'
+import { RiDiscLine } from 'react-icons/ri'
 import subsonic from '../subsonic'
 import { playTracks } from '../actions'
 import { useGetHandleArtistClick } from '../common/useGetHandleArtistClick'
 import { keyMap } from '../hotkeys'
 import { useOmniSearch } from './useOmniSearch'
 import { matchingLyricsLine } from './lyricsMatch'
+import { isDjSupported, startDjMix } from '../audioplayer/dj'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -143,6 +147,13 @@ const Omnibar = () => {
     },
     [dispatch, history, artistLink, close],
   )
+
+  const djMix = (record) => {
+    startDjMix(dispatch, record)
+    setQuery('')
+    close()
+  }
+  const canMix = isDjSupported()
 
   const seeAll = (section) => {
     const filter = encodeURIComponent(
@@ -291,6 +302,21 @@ const Omnibar = () => {
                         primaryTypographyProps={{ noWrap: true }}
                         secondaryTypographyProps={{ noWrap: true }}
                       />
+                      {canMix && section.resource === 'song' && (
+                        <ListItemSecondaryAction>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            aria-label={translate(
+                              'resources.song.actions.djMix',
+                            )}
+                            title={translate('resources.song.actions.djMix')}
+                            onClick={() => djMix(record)}
+                          >
+                            <RiDiscLine />
+                          </IconButton>
+                        </ListItemSecondaryAction>
+                      )}
                     </ListItem>
                   )
                 })}

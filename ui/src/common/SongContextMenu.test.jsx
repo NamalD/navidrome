@@ -22,6 +22,12 @@ vi.mock('../config', () => ({
   },
 }))
 
+const startDjMix = vi.fn()
+vi.mock('../audioplayer/dj', () => ({
+  isDjSupported: () => true,
+  startDjMix: (...args) => startDjMix(...args),
+}))
+
 const mockDispatch = vi.fn()
 vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
 
@@ -128,6 +134,19 @@ describe('SongContextMenu', () => {
       screen.getByText(/resources\.song\.actions\.showInPlaylist/),
     )
     expect(mockOnClick).not.toHaveBeenCalled()
+  })
+
+  it('starts a DJ mix from the song', async () => {
+    const record = { id: 'song1', size: 1 }
+    render(
+      <TestContext>
+        <SongContextMenu record={record} resource="song" />
+      </TestContext>,
+    )
+    fireEvent.click(screen.getAllByRole('button')[1])
+    await waitFor(() => screen.getByText(/resources\.song\.actions\.djMix/))
+    fireEvent.click(screen.getByText(/resources\.song\.actions\.djMix/))
+    expect(startDjMix).toHaveBeenCalledWith(mockDispatch, record)
   })
 
   describe('Instant Mix action', () => {

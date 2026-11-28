@@ -1,4 +1,5 @@
 import {
+  SET_DJ_MODE,
   SET_ENDLESS_PLAY,
   SET_GAPLESS_PLAYBACK,
   SET_NOTIFICATIONS_STATE,
@@ -15,6 +16,8 @@ const initialState = {
   endlessPlay: false,
   // Settings saved before this existed lack the key; read it as `!== false` so it defaults to on.
   gaplessPlayback: true,
+  // Songs mix into each other, beatmatched, with the mixer choosing what comes next (audioplayer/dj).
+  djMode: false,
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -55,6 +58,11 @@ export const settingsReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         gaplessPlayback: data,
+      }
+    case SET_DJ_MODE:
+      return {
+        ...previousState,
+        djMode: data,
       }
     default:
       return previousState

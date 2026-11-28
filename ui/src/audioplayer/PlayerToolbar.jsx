@@ -6,6 +6,7 @@ import IconButton from '@material-ui/core/IconButton'
 import { useMediaQuery } from '@material-ui/core'
 import Tooltip from '@material-ui/core/Tooltip'
 import {
+  RiDiscLine,
   RiFileMusicLine,
   RiInfinityLine,
   RiRepeat2Line,
@@ -16,6 +17,7 @@ import {
 import { LoveButton, useToggleLove } from '../common'
 import {
   openSaveQueueDialog,
+  setDjMode,
   setEndlessPlay,
   setPlayMode,
   setShuffle,
@@ -23,6 +25,7 @@ import {
 import { keyMap } from '../hotkeys'
 import { makeStyles } from '@material-ui/core/styles'
 import { PLAYER_DESKTOP_MEDIA_QUERY } from './playerBreakpoints'
+import { isDjSupported } from './dj'
 
 // Repeat cycles like Spotify's button: off, repeat the queue, repeat the track
 const REPEAT_MODES = ['order', 'orderLoop', 'singleLoop']
@@ -96,6 +99,7 @@ const PlayerToolbar = ({
   const endlessPlay = useSelector(
     (state) => state.settings.endlessPlay || false,
   )
+  const djMode = useSelector((state) => state.settings.djMode || false)
   const shuffle = useSelector((state) => state.player.shuffle || false)
   const playMode = useSelector((state) => state.player.mode)
   const repeatMode = REPEAT_MODES.includes(playMode) ? playMode : 'order'
@@ -122,6 +126,14 @@ const PlayerToolbar = ({
       e.stopPropagation()
     },
     [dispatch, endlessPlay],
+  )
+
+  const handleToggleDjMode = useCallback(
+    (e) => {
+      dispatch(setDjMode(!djMode))
+      e.stopPropagation()
+    },
+    [dispatch, djMode],
   )
 
   const handleToggleShuffle = useCallback(
@@ -173,6 +185,23 @@ const PlayerToolbar = ({
       <RiInfinityLine className={!isDesktop ? classes.mobileIcon : undefined} />
     </IconButton>
   )
+
+  const djModeLabel = translate('player.djModeText')
+  const djModeButton = isDjSupported() ? (
+    <IconButton
+      size={isDesktop ? 'small' : undefined}
+      onClick={handleToggleDjMode}
+      disabled={isRadio}
+      color={djMode ? 'primary' : 'default'}
+      title={djModeLabel}
+      aria-label={djModeLabel}
+      aria-pressed={djMode}
+      data-testid="dj-mode-button"
+      className={buttonClass}
+    >
+      <RiDiscLine className={!isDesktop ? classes.mobileIcon : undefined} />
+    </IconButton>
+  ) : null
 
   const shuffleLabel = translate('player.playModeText.shufflePlay')
   const shuffleButton = (
@@ -254,6 +283,7 @@ const PlayerToolbar = ({
           <span className={classes.repeat}>{repeatButton}</span>
           <li className={`${listItemClass} item`}>
             {endlessPlayButton}
+            {djModeButton}
             {saveQueueButton}
             {loveButton}
             {lyricsButton}
@@ -264,6 +294,9 @@ const PlayerToolbar = ({
           <li className={`${listItemClass} item`}>{shuffleButton}</li>
           <li className={`${listItemClass} item`}>{repeatButton}</li>
           <li className={`${listItemClass} item`}>{endlessPlayButton}</li>
+          {djModeButton && (
+            <li className={`${listItemClass} item`}>{djModeButton}</li>
+          )}
           <li className={`${listItemClass} item`}>{saveQueueButton}</li>
           <li className={`${listItemClass} item`}>{loveButton}</li>
           <li className={`${listItemClass} item`}>{lyricsButton}</li>

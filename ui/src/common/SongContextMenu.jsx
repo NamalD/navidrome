@@ -25,6 +25,7 @@ import {
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { playSimilar } from './playbackActions.js'
+import { isDjSupported, startDjMix } from '../audioplayer/dj'
 import { formatBytes } from '../utils'
 import { useRedirect } from 'react-admin'
 
@@ -86,6 +87,11 @@ export const SongContextMenu = ({
       enabled: true,
       label: translate('resources.song.actions.addToQueue'),
       action: (record) => dispatch(addTracks({ [record.id]: record })),
+    },
+    djMix: {
+      enabled: isDjSupported(),
+      label: translate('resources.song.actions.djMix'),
+      action: (record) => startDjMix(dispatch, record),
     },
     instantMix: {
       enabled: config.enableExternalServices,

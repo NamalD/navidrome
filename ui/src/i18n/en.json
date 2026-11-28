@@ -52,7 +52,8 @@
         "download": "Download",
         "playNext": "Play Next",
         "info": "Get Info",
-        "instantMix": "Instant Mix"
+        "instantMix": "Instant Mix",
+        "djMix": "Start DJ Mix"
       }
     },
     "album": {
@@ -678,6 +679,7 @@
     "volumeText": "Volume",
     "toggleLyricText": "Toggle lyrics",
     "endlessPlayText": "Endless play",
+    "djModeText": "DJ mix",
     "lyricsTitleText": "Lyrics",
     "lyricsLoadingText": "Loading lyrics",
     "lyricsUnavailableText": "Lyrics unavailable",

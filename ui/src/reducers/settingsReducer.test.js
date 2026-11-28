@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { settingsReducer } from './settingsReducer'
 import {
   SET_SIDEBAR_PLAYLISTS_FAVOURITES,
+  setDjMode,
   setEndlessPlay,
   setSidebarPlaylistsOnlyFavourites,
 } from '../actions'
@@ -48,5 +49,11 @@ describe('settingsReducer', () => {
 
     const off = settingsReducer(on, setEndlessPlay(false))
     expect(off.endlessPlay).toBe(false)
+  })
+
+  it('keeps DJ mode off until turned on', () => {
+    const initial = settingsReducer(undefined, { type: 'UNKNOWN' })
+    expect(initial.djMode).toBe(false)
+    expect(settingsReducer(initial, setDjMode(true)).djMode).toBe(true)
   })
 })

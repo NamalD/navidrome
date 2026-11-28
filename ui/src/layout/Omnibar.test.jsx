@@ -9,7 +9,10 @@ import Omnibar from './Omnibar'
 import config from '../config'
 import { PLAYER_PLAY_TRACKS } from '../actions'
 
-const { getList } = vi.hoisted(() => ({ getList: vi.fn() }))
+const { getList, startDjMix } = vi.hoisted(() => ({
+  getList: vi.fn(),
+  startDjMix: vi.fn(),
+}))
 
 vi.mock('react-admin', async () => {
   const { createContext } = await import('react')
@@ -22,6 +25,10 @@ vi.mock('react-admin', async () => {
 vi.mock('react-hotkeys', () => ({ GlobalHotKeys: () => null }))
 vi.mock('../subsonic', () => ({
   default: { getCoverArtUrl: () => 'cover.jpg' },
+}))
+vi.mock('../audioplayer/dj', () => ({
+  isDjSupported: () => true,
+  startDjMix,
 }))
 vi.mock('../common/useGetHandleArtistClick', () => ({
   useGetHandleArtistClick: () => (id) => `/artist/${id}/show`,
@@ -128,6 +135,25 @@ describe('<Omnibar />', () => {
       expect.objectContaining({ type: PLAYER_PLAY_TRACKS, id: 's1' }),
     )
     expect(history.location.pathname).toBe('/')
+  })
+
+  it('starts a DJ mix from a song', async () => {
+    startDjMix.mockReset()
+    await type('karma')
+    const [first] = await screen.findAllByRole('button', {
+      name: 'resources.song.actions.djMix',
+    })
+    fireEvent.click(first)
+
+    expect(startDjMix).toHaveBeenCalledWith(
+      dispatch,
+      expect.objectContaining({ id: 's1' }),
+    )
+    // Only the mix starts: the row's own click (play the song) doesn't fire too.
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: PLAYER_PLAY_TRACKS }),
+    )
+    expect(screen.queryByText('Karma Police')).toBeNull()
   })
 
   it('links a group to its full list, filtered by the query', async () => {

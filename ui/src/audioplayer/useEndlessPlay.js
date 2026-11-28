@@ -55,9 +55,10 @@ export const fetchContinuation = async (
 
 // While the "endless play" setting is on, extends the queue when its last
 // track starts playing, so playback continues instead of stopping.
-export const useEndlessPlay = (playerState) => {
+export const useEndlessPlay = (playerState, { disabled = false } = {}) => {
   const dispatch = useDispatch()
-  const enabled = useSelector((state) => state.settings.endlessPlay || false)
+  const setting = useSelector((state) => state.settings.endlessPlay || false)
+  const enabled = setting && !disabled
   const { queue, current, mode } = playerState
 
   // The effect reads the queue through a ref, so it only runs when the seed changes

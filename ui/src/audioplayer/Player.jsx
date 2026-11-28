@@ -36,6 +36,7 @@ import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 import { useEndlessPlay } from './useEndlessPlay'
 import { useGaplessPlayback } from './gapless'
+import { isDjSupported, useDjPlayback } from './dj'
 import usePlayerLyrics from './usePlayerLyrics'
 import { useLyricsLayout } from './LyricsLayoutContext'
 import {
@@ -134,7 +135,9 @@ const Player = () => {
     }
   }, [playerState.queue, playerState.savedPlayIndex])
 
-  useEndlessPlay(playerState)
+  const djMode = useSelector((state) => state.settings.djMode || false)
+  // In DJ mode the mixer chooses each next song, so endless play stands aside.
+  useEndlessPlay(playerState, { disabled: djMode })
 
   const visible = authenticated && playerState.queue.length > 0
   const isRadio = playerState.current?.isRadio || false
@@ -155,8 +158,10 @@ const Player = () => {
     audioInstance,
     playerState,
     gainInfo,
-    enabled: gaplessEnabled,
+    enabled: gaplessEnabled && !(djMode && isDjSupported()),
   })
+  // Called after useGaplessPlayback: switching between the two, its effects must run after the other's.
+  const dj = useDjPlayback({ audioInstance, playerState, enabled: djMode })
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
   const { setDesktopLyricsProps } = useLyricsLayout()
@@ -192,6 +197,7 @@ const Player = () => {
       context === null &&
       audioInstance &&
       gapless === false &&
+      !dj &&
       config.enableReplayGain &&
       'AudioContext' in window &&
       (gainInfo.gainMode === 'album' || gainInfo.gainMode === 'track')
@@ -208,7 +214,7 @@ const Player = () => {
       setContext(ctx)
       setGainNode(gain)
     }
-  }, [audioInstance, context, gainInfo.gainMode, gapless])
+  }, [audioInstance, context, gainInfo.gainMode, gapless, dj])
 
   useEffect(() => {
     if (gainNode) {

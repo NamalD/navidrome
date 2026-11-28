@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useToggleLove } from '../common'
 import {
   openSaveQueueDialog,
+  setDjMode,
   setEndlessPlay,
   setPlayMode,
   setShuffle,
@@ -42,10 +43,13 @@ vi.mock('../common', () => ({
 
 vi.mock('../actions', () => ({
   openSaveQueueDialog: vi.fn(),
+  setDjMode: vi.fn(),
   setEndlessPlay: vi.fn(),
   setPlayMode: vi.fn(),
   setShuffle: vi.fn(),
 }))
+
+vi.mock('./dj', () => ({ isDjSupported: () => true }))
 
 vi.mock('react-hotkeys', () => ({
   GlobalHotKeys: () => <div data-testid="global-hotkeys" />,
@@ -66,6 +70,10 @@ describe('<PlayerToolbar />', () => {
     openSaveQueueDialog.mockReturnValue({ type: 'OPEN_SAVE_QUEUE_DIALOG' })
     setEndlessPlay.mockImplementation((enabled) => ({
       type: 'SET_ENDLESS_PLAY',
+      data: enabled,
+    }))
+    setDjMode.mockImplementation((enabled) => ({
+      type: 'SET_DJ_MODE',
       data: enabled,
     }))
     setPlayMode.mockImplementation((mode) => ({
@@ -116,6 +124,17 @@ describe('<PlayerToolbar />', () => {
 
       expect(mockDispatch).toHaveBeenCalledWith({
         type: 'SET_ENDLESS_PLAY',
+        data: true,
+      })
+    })
+
+    it('toggles DJ mode from the player bar', () => {
+      render(<PlayerToolbar id="song-1" />)
+      const button = screen.getByTestId('dj-mode-button')
+      expect(button).toHaveAttribute('aria-pressed', 'false')
+      fireEvent.click(button)
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: 'SET_DJ_MODE',
         data: true,
       })
     })
@@ -241,12 +260,13 @@ describe('<PlayerToolbar />', () => {
 
       // Each button should be in its own list item
       const listItems = screen.getAllByRole('listitem')
-      expect(listItems).toHaveLength(6)
+      expect(listItems).toHaveLength(7)
 
       // Verify all buttons are rendered
       expect(screen.getByTestId('shuffle-button')).toBeInTheDocument()
       expect(screen.getByTestId('repeat-button')).toBeInTheDocument()
       expect(screen.getByTestId('endless-play-button')).toBeInTheDocument()
+      expect(screen.getByTestId('dj-mode-button')).toBeInTheDocument()
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
       expect(screen.getByTestId('toggle-lyrics-button')).toBeInTheDocument()
