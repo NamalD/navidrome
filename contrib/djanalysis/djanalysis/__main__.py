@@ -1,6 +1,6 @@
 """djanalysis: analyse the Navidrome library for the DJ mixer.
 
-    djanalysis run [--limit N] [--id SONG_ID ...] [--force]
+    djanalysis run [--limit N] [--id SONG_ID ...] [--force] [--dry-run]
     djanalysis upload
 
 Downloads each song that has no current analysis, analyses it on the GPU, saves the result as
@@ -12,14 +12,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
 
-from .analyse import HOME, SCHEMA_VERSION
-from .subsonic import Client, Uploader
+# TensorFlow (inside Essentia) logs its GPU probing to stderr unless told not to; set before it loads.
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+
+from .analyse import HOME, SCHEMA_VERSION  # noqa: E402
+from .subsonic import Client, Uploader  # noqa: E402
 
 CACHE = HOME / "cache"
 TMP = HOME / "tmp"
@@ -63,7 +67,7 @@ def run(args: argparse.Namespace) -> int:
     if args.limit:
         todo = todo[: args.limit]
     print(f"{len(songs)} songs, {len(todo)} to analyse", flush=True)
-    if not todo:
+    if not todo or args.dry_run:
         return 0
     if game := game_running():
         print(f"a game is using the GPU ({game}); not starting", flush=True)
@@ -131,6 +135,7 @@ def main() -> int:
     r.add_argument("--limit", type=int, default=0)
     r.add_argument("--id", action="append", default=[])
     r.add_argument("--force", action="store_true")
+    r.add_argument("-n", "--dry-run", action="store_true", help="only say how many songs need analysing")
     sub.add_parser("upload", help="send new and changed analyses to Navidrome")
     args = p.parse_args()
     return {"run": run, "upload": upload}[args.cmd](args)

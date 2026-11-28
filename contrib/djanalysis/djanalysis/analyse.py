@@ -43,7 +43,12 @@ class Models:
     @classmethod
     def load(cls, device: str = "cuda") -> "Models":
         from beat_this.inference import Audio2Beats
+        import essentia
         import essentia.standard as es
+
+        # Essentia warns hundreds of times a song ("No network created..."), which would flood the journal.
+        essentia.log.warningActive = False
+        essentia.log.infoActive = False
 
         return cls(
             beats=Audio2Beats(checkpoint_path="final0", device=device, dbn=False),
@@ -115,9 +120,12 @@ def loudness(audio: np.ndarray) -> float | None:
     return None if not np.isfinite(value) else round(value, 2)
 
 
-def embedding(models: Models, path: Path) -> list[float]:
-    """Mean Discogs-EffNet embedding over the track (1280 numbers), scaled to unit length for cosine similarity."""
+def embedding(models: Models, path: Path) -> list[float] | None:
+    """Mean Discogs-EffNet embedding over the track (1280 numbers), scaled to unit length for cosine similarity.
+    None for audio shorter than the model's ~2 s window."""
     frames = np.asarray(models.effnet(decode(path, 16000)))
+    if frames.ndim != 2 or len(frames) == 0:
+        return None
     v = frames.mean(axis=0)
     v = v / (np.linalg.norm(v) + 1e-12)
     return [round(float(x), 5) for x in v]

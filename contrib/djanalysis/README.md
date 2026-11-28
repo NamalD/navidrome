@@ -18,7 +18,7 @@ Per song, downloaded as the original file through the Subsonic `download` endpoi
 | `loudness_lufs` | EBU R128 integrated loudness (pyloudnorm), mono |
 | `bar_energy_db` | Per bar: energy in low (<150 Hz), mid, high (>2.5 kHz) and full band, dB |
 | `phrases` | Bar indices where a section starts: peaks in bar-to-bar change of the band energies, at least 8 bars apart, snapped to 4-bar steps |
-| `embedding` | Mean Discogs-EffNet embedding (1280 numbers, unit length) for sound similarity; the player never gets it |
+| `embedding` | Mean Discogs-EffNet embedding (1280 numbers, unit length) for sound similarity, or null for audio under ~2 s; the player never gets it |
 | `source` | Song ID, file size, artist, title, album, duration |
 
 A song is analysed again when its file size or `SCHEMA_VERSION` changes. allin1 (learned section labels) was left
@@ -52,4 +52,5 @@ journalctl --user -u djanalysis
 
 The timer runs both every three hours. `run` won't start, and stops within ten songs, while a game is using the
 GPU (a Proton `.exe` or anything under `steamapps` in `nvidia-smi`), exiting 75; the next timer run carries on.
-The whole library (about 650 songs) took about 5 s a song, mostly CPU.
+The whole library (657 songs) took 46 minutes, about 4 s a song, mostly CPU. `run -n` only reports how many
+songs need analysing.
