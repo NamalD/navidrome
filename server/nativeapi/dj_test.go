@@ -152,6 +152,10 @@ var _ = Describe("DJ analysis endpoints", func() {
 			Expect(plan.Transition.Rate).To(BeNumerically("~", 124.0/126, 1e-9))
 		}
 		Expect(get("current=song-1&exclude=song-2").Code).To(Equal(http.StatusNotFound))
+		w := get("current=song-2&next=song-1")
+		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+		Expect(w.Body.String()).To(ContainSubstring(`"songId":"song-1"`))
+		Expect(get("current=song-1&next=gone").Code).To(Equal(http.StatusNotFound))
 		Expect(get("current=nope").Code).To(Equal(http.StatusNotFound))
 		Expect(get("").Code).To(Equal(http.StatusBadRequest))
 		Expect(get("current=song-1&rate=abc").Code).To(Equal(http.StatusBadRequest))

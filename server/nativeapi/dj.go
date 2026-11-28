@@ -40,7 +40,9 @@ func (api *Router) addDJUploadRoute(r chi.Router) {
 // (only the planner needs it), and the planner's choice of what to play next.
 //
 //	GET /dj/analysis/{id}
-//	GET /dj/next?current=<id>&rate=<playback rate>&semitones=<n>&exclude=<id>...&history=<id>...
+//	GET /dj/next?current=<id>&rate=<playback rate>&semitones=<n>&exclude=<id>...&history=<id>...[&next=<id>]
+//
+// With `next` it plans the transition into that song (one the user queued) instead of choosing one.
 func (api *Router) addDJAnalysisRoute(r chi.Router) {
 	r.Get("/dj/analysis/{id}", api.getDJAnalysis)
 	r.Get("/dj/next", api.getDJNext)
@@ -87,8 +89,20 @@ func (api *Router) getDJNext(w http.ResponseWriter, r *http.Request) {
 		m, err := mf.Get(id)
 		return err == nil && !m.Missing
 	}
-	plan, err := djmix.Choose(songs, req, rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())), allowed)
+	var plan *djmix.Plan
+	if next := q.Get("next"); next != "" {
+		if !allowed(next) {
+			http.Error(w, "Next song not found", http.StatusNotFound)
+			return
+		}
+		plan, err = djmix.PlanTo(songs, req, next)
+	} else {
+		plan, err = djmix.Choose(songs, req, rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())), allowed)
+	}
 	switch {
+	case errors.Is(err, djmix.ErrNextNotAnalysed):
+		http.Error(w, "The next song has not been analysed", http.StatusNotFound)
+		return
 	case errors.Is(err, djmix.ErrNotAnalysed):
 		http.Error(w, "The playing song has not been analysed", http.StatusNotFound)
 		return

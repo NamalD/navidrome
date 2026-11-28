@@ -179,6 +179,19 @@ var _ = Describe("Choose", func() {
 		Expect(p.Transition.Semitones).To(Equal(0))
 	})
 
+	It("plans into a song the user queued, even a poor fit", func() {
+		lib := map[string]*Analysis{
+			"a":   song("A", 124, 64, cMajor, 0),
+			"far": song("Far", 95, 64, fSharp, 5),
+		}
+		p, err := PlanTo(lib, Request{Current: "a"}, "far")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(p.SongID).To(Equal("far"))
+		Expect(p.Transition.Type).To(Equal(Echo))
+		_, err = PlanTo(lib, Request{Current: "a"}, "nope")
+		Expect(err).To(MatchError(ErrNextNotAnalysed))
+	})
+
 	It("needs the current song to be analysed", func() {
 		_, err := Choose(map[string]*Analysis{}, Request{Current: "x"}, rand.New(rand.NewPCG(1, 1)), nil)
 		Expect(err).To(MatchError(ErrNotAnalysed))

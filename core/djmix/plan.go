@@ -76,6 +76,7 @@ type Request struct {
 
 var ErrNotAnalysed = errors.New("the current song has not been analysed")
 var ErrNoCandidates = errors.New("no song left to mix into")
+var ErrNextNotAnalysed = errors.New("the next song has not been analysed")
 
 // Choose picks the next song from lib (song ID to analysis) among those allowed reports true for, and plans the
 // transition: at random among the best few of Rank, weighted towards the best, so the same start gives
@@ -167,13 +168,7 @@ func Rank(lib map[string]*Analysis, req Request) ([]Plan, error) {
 		if len(c.b.Embedding) == 0 || len(centroid) == 0 {
 			rank = 0
 		}
-		t, tempo := planTransition(a, c.b, req.Rate)
-		semis, key := bestShift(a.Key.Shifted(req.Semitones), c.b.Key)
-		t.Semitones = semis
-		plans[i] = Plan{SongID: c.id, Transition: t, Score: Score{
-			Similarity: rank, Tempo: tempo, Key: key,
-			Total: 0.45*rank + 0.30*tempo + 0.25*key,
-		}}
+		plans[i] = planFor(a, c.id, c.b, req, rank)
 	}
 	sort.Slice(plans, func(i, j int) bool {
 		if plans[i].Score.Total != plans[j].Score.Total {
@@ -182,6 +177,33 @@ func Rank(lib map[string]*Analysis, req Request) ([]Plan, error) {
 		return plans[i].SongID < plans[j].SongID
 	})
 	return plans, nil
+}
+
+// PlanTo plans the transition from the current song into a given one (one the user queued), whatever its score.
+func PlanTo(lib map[string]*Analysis, req Request, id string) (*Plan, error) {
+	a := lib[req.Current]
+	if a == nil {
+		return nil, ErrNotAnalysed
+	}
+	b := lib[id]
+	if b == nil {
+		return nil, ErrNextNotAnalysed
+	}
+	if req.Rate <= 0 {
+		req.Rate = 1
+	}
+	p := planFor(a, id, b, req, math.Max(0, cosine(a.Embedding, b.Embedding)))
+	return &p, nil
+}
+
+func planFor(a *Analysis, id string, b *Analysis, req Request, similarity float64) Plan {
+	t, tempo := planTransition(a, b, req.Rate)
+	semis, key := bestShift(a.Key.Shifted(req.Semitones), b.Key)
+	t.Semitones = semis
+	return Plan{SongID: id, Transition: t, Score: Score{
+		Similarity: similarity, Tempo: tempo, Key: key,
+		Total: 0.45*similarity + 0.30*tempo + 0.25*key,
+	}}
 }
 
 // weight makes the best of the top few much likelier than the fifth.
