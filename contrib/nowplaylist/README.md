@@ -55,7 +55,7 @@ environment variables of the same name win.
 ## Building, installing, testing
 
 A Go module of its own, so the fork's `go test ./...` leaves it out; CI runs it in a step of its own.
-`mise.toml` pins the Go version.
+The fork's `mise.toml` pins the Go version.
 
 ```sh
 cd contrib/nowplaylist
