@@ -50,6 +50,21 @@ Remotes in a checkout: `origin` is this fork, `upstream` is navidrome/navidrome.
   `db/lyrics_search.go`, `core/lyrics/fetcher.go`, `persistence/fetched_lyrics_repository.go`,
   `persistence/sql_search_lyrics.go` and `ui/src/layout/lyricsMatch.js`.
 
+- **Gapless playback.** Songs in the web player follow each other with no gap: the first sample of a track
+  plays right after the last sample of the one before, as on a CD, for albums such as live sets and mixes. The
+  player asks the server for every song as FLAC (FLAC files as they are, the rest converted to it), splits each
+  download into frames, decodes it a piece at a time and schedules the pieces on one Web Audio clock; the next
+  track in the queue is downloaded ahead and starts on the sample the current one ends. It works behind the music
+  player library's own `<audio>` element, which it stands in for, so the library and the rest of the UI don't
+  change; internet radio still plays through the element. Repeat-one loops gaplessly too. Two tracks at different
+  sample rates still have a short gap between them (the audio clock has to restart at the new rate). On by
+  default, with a switch on the Personal page (per browser). ReplayGain is applied by the player in either case,
+  and its default is now "album", which keeps the quiet and loud tracks of an album as they were mastered. Code:
+  `ui/src/audioplayer/gapless` (`engine.js` is the player, `mediaFacade.js` the stand-in element).
+- **ReplayGain tags.** `contrib/replaygain` tags the library with ReplayGain values (rsgain in a container, album
+  and track gain per album folder, track gain for loose files). On the VPS it runs from cron every night at
+  04:30 and skips files already tagged; Navidrome picks the tags up on its next scan.
+
 ## Build and deploy
 
 `.github/workflows/fork-deploy.yml` checks the web UI (lint, formatting, tests), runs the Go tests, builds the

@@ -1,5 +1,6 @@
 import {
   SET_ENDLESS_PLAY,
+  SET_GAPLESS_PLAYBACK,
   SET_NOTIFICATIONS_STATE,
   SET_OMITTED_FIELDS,
   SET_SIDEBAR_PLAYLISTS_FAVOURITES,
@@ -12,6 +13,8 @@ const initialState = {
   omittedFields: {},
   sidebarPlaylistsOnlyFavourites: false,
   endlessPlay: false,
+  // Settings saved before this existed lack the key; read it as `!== false` so it defaults to on.
+  gaplessPlayback: true,
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -47,6 +50,11 @@ export const settingsReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         endlessPlay: data,
+      }
+    case SET_GAPLESS_PLAYBACK:
+      return {
+        ...previousState,
+        gaplessPlayback: data,
       }
     default:
       return previousState

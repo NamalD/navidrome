@@ -5,6 +5,7 @@ export const SET_SIDEBAR_PLAYLISTS_FAVOURITES =
   'SET_SIDEBAR_PLAYLISTS_FAVOURITES'
 
 export const SET_ENDLESS_PLAY = 'SET_ENDLESS_PLAY'
+export const SET_GAPLESS_PLAYBACK = 'SET_GAPLESS_PLAYBACK'
 
 export const setNotificationsState = (enabled) => ({
   type: SET_NOTIFICATIONS_STATE,
@@ -28,5 +29,10 @@ export const setSidebarPlaylistsOnlyFavourites = (enabled) => ({
 
 export const setEndlessPlay = (enabled) => ({
   type: SET_ENDLESS_PLAY,
+  data: enabled,
+})
+
+export const setGaplessPlayback = (enabled) => ({
+  type: SET_GAPLESS_PLAYBACK,
   data: enabled,
 })

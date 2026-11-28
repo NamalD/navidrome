@@ -15,7 +15,9 @@ const getPreAmp = () => {
 }
 
 const initialState = {
-  gainMode: localStorage.getItem(GAIN_KEY) || 'none',
+  // Album gain unless the user picked otherwise: the library is tagged (contrib/replaygain), and files without
+  // tags play unchanged.
+  gainMode: localStorage.getItem(GAIN_KEY) || 'album',
   preAmp: getPreAmp(),
 }
 

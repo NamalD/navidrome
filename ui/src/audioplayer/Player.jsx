@@ -35,6 +35,7 @@ import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 import { useEndlessPlay } from './useEndlessPlay'
+import { useGaplessPlayback } from './gapless'
 import usePlayerLyrics from './usePlayerLyrics'
 import { useLyricsLayout } from './LyricsLayoutContext'
 import {
@@ -146,6 +147,16 @@ const Player = () => {
     (state) => state.settings.notifications || false,
   )
   const gainInfo = useSelector((state) => state.replayGain)
+  const gaplessEnabled = useSelector(
+    (state) => state.settings.gaplessPlayback !== false,
+  )
+  // While on, songs play through the gapless engine, which applies ReplayGain itself.
+  const gapless = useGaplessPlayback({
+    audioInstance,
+    playerState,
+    gainInfo,
+    enabled: gaplessEnabled,
+  })
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
   const { setDesktopLyricsProps } = useLyricsLayout()
@@ -180,6 +191,7 @@ const Player = () => {
     if (
       context === null &&
       audioInstance &&
+      !gapless &&
       config.enableReplayGain &&
       'AudioContext' in window &&
       (gainInfo.gainMode === 'album' || gainInfo.gainMode === 'track')
@@ -196,7 +208,7 @@ const Player = () => {
       setContext(ctx)
       setGainNode(gain)
     }
-  }, [audioInstance, context, gainInfo.gainMode])
+  }, [audioInstance, context, gainInfo.gainMode, gapless])
 
   useEffect(() => {
     if (gainNode) {
