@@ -51,24 +51,42 @@ func reindexLyrics(idExpr string) string {
 		LyricsFTSTable, idExpr, indexedLyrics("m.id = "+idExpr))
 }
 
-// ensureLyricsSearch creates the fetched lyrics table, the lyrics index and the triggers that keep the
-// index current, and fills the index from the existing rows the first time. It runs on every startup
-// instead of being a migration: goose refuses to start once the database is ahead of a migration it has
-// not applied, and a migration of ours would be ahead of any upstream one written before it but released
-// after. The triggers are recreated each time, so a change to them takes effect on the next start.
+// ensureLyricsSearch sets up lyrics search (see setupLyricsSearch). It runs on every startup instead of
+// being a migration: goose refuses to start once the database is ahead of a migration it has not applied,
+// and a migration of ours would be ahead of any upstream one written before it but released after.
 func ensureLyricsSearch(ctx context.Context, db *sql.DB) error {
-	var exists bool
-	err := db.QueryRowContext(ctx,
-		`SELECT count(*) > 0 FROM sqlite_master WHERE type = 'table' AND name = ?`, LyricsFTSTable).Scan(&exists)
-	if err != nil {
-		return fmt.Errorf("checking for %s: %w", LyricsFTSTable, err)
-	}
-
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := setupLyricsSearch(ctx, tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// lyricsFTSExists reports whether the lyrics index has been created.
+func lyricsFTSExists(ctx context.Context, q interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}) (bool, error) {
+	var exists bool
+	err := q.QueryRowContext(ctx,
+		`SELECT count(*) > 0 FROM sqlite_master WHERE type = 'table' AND name = ?`, LyricsFTSTable).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("checking for %s: %w", LyricsFTSTable, err)
+	}
+	return exists, nil
+}
+
+// setupLyricsSearch creates the fetched lyrics table, the lyrics index and the triggers that keep the
+// index current, and fills the index from the existing rows when it creates it. The triggers are
+// recreated each time, so a change to them takes effect on the next start.
+func setupLyricsSearch(ctx context.Context, tx *sql.Tx) error {
+	exists, err := lyricsFTSExists(ctx, tx)
+	if err != nil {
+		return err
+	}
 
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS ` + FetchedLyricsTable + ` (
@@ -104,7 +122,7 @@ func ensureLyricsSearch(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("setting up lyrics search (%s): %w", firstLine(stmt), err)
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func firstLine(s string) string {

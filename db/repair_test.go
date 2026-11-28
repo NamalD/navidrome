@@ -138,6 +138,16 @@ var _ = Describe("Repair", func() {
 			_, err := database.ExecContext(ctx, stmt)
 			Expect(err).ToNot(HaveOccurred())
 		}
+		// Lyrics search is set up at startup, after the migrations
+		Expect(db.EnsureLyricsSearch(ctx, database)).To(Succeed())
+		for _, stmt := range []string{
+			`update media_file set lyrics = '[{"lang":"eng","line":[{"value":"Gabba gabba hey"}]}]' where id = 'mf-1'`,
+			`insert into media_file_fetched_lyrics(media_file_id, fetched_lyrics, fetched_at)
+			 values ('mf-2', '[{"lang":"eng","line":[{"value":"Hitching a ride"}]}]', datetime('now'))`,
+		} {
+			_, err := database.ExecContext(ctx, stmt)
+			Expect(err).ToNot(HaveOccurred())
+		}
 	})
 
 	corruptFTS := func(table string) {
@@ -240,6 +250,34 @@ var _ = Describe("Repair", func() {
 	})
 
 	Describe("RebuildFTS", func() {
+		It("repairs a corrupted lyrics index, keeping embedded and fetched lyrics searchable", func() {
+			Expect(searchFTS("media_file_lyrics_fts", "gabba")).To(Equal(1))
+			Expect(searchFTS("media_file_lyrics_fts", "hitching")).To(Equal(1))
+			corruptFTS("media_file_lyrics_fts")
+			issues, _, err := db.IntegrityCheck(ctx, database)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(issues).ToNot(BeEmpty())
+			Expect(db.IsFTSCorruptionOnly(issues)).To(BeTrue())
+			Expect(db.VerifyFTS(ctx, database)).To(MatchError(ContainSubstring("media_file_lyrics_fts")))
+
+			Expect(db.RebuildFTS(ctx, database)).To(Succeed())
+
+			issues, _, err = db.IntegrityCheck(ctx, database)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(issues).To(BeEmpty())
+			Expect(searchFTS("media_file_lyrics_fts", "gabba")).To(Equal(1))
+			Expect(searchFTS("media_file_lyrics_fts", "hitching")).To(Equal(1))
+		})
+
+		It("creates the lyrics index on a database that never had it", func() {
+			database = newDB(ctx, 0)
+			Expect(db.VerifyFTS(ctx, database)).To(Succeed())
+
+			Expect(db.RebuildFTS(ctx, database)).To(Succeed())
+
+			Expect(searchFTS("media_file_lyrics_fts", "anything")).To(BeZero())
+		})
+
 		It("repairs a corrupted FTS index", func() {
 			corruptFTS("media_file_fts")
 
@@ -304,6 +342,12 @@ var _ = Describe("Repair", func() {
 			_, err = database.ExecContext(ctx, `delete from artist where id = 'ar-2'`)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(searchFTS("artist_fts", "blondie")).To(BeZero())
+
+			_, err = database.ExecContext(ctx,
+				`update media_file set lyrics = '[{"lang":"eng","line":[{"value":"Beat on the brat"}]}]' where id = 'mf-1'`)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(searchFTS("media_file_lyrics_fts", "brat")).To(Equal(1))
+			Expect(searchFTS("media_file_lyrics_fts", "gabba")).To(BeZero())
 		})
 	})
 })

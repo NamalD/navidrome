@@ -85,7 +85,7 @@ func IsFTSCorruptionOnly(issues []string) bool {
 		return false
 	}
 	for _, line := range issues {
-		if !slices.ContainsFunc(ftsTables, func(table string) bool { return strings.Contains(line, table) }) {
+		if !slices.ContainsFunc(append(slices.Clone(ftsTables), LyricsFTSTable), func(table string) bool { return strings.Contains(line, table) }) {
 			return false
 		}
 	}
@@ -95,6 +95,7 @@ func IsFTSCorruptionOnly(issues []string) bool {
 // execer is the subset of *sql.DB and *sql.Tx that verifyFTS needs.
 type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
 // VerifyFTS runs the FTS5 'integrity-check' command on each search table. Unlike a
@@ -104,7 +105,14 @@ func VerifyFTS(ctx context.Context, database *sql.DB) error {
 }
 
 func verifyFTS(ctx context.Context, database execer) error {
-	for _, table := range ftsTables {
+	tables := ftsTables
+	// The lyrics index is created at startup, so a database not yet opened by this version lacks it
+	if exists, err := lyricsFTSExists(ctx, database); err != nil {
+		return err
+	} else if exists {
+		tables = append(slices.Clone(ftsTables), LyricsFTSTable)
+	}
+	for _, table := range tables {
 		stmt := fmt.Sprintf("INSERT INTO %[1]s(%[1]s) VALUES('integrity-check')", table) //nolint:gosec // fixed table list
 		if _, err := database.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("verifying %s: %w", table, err)
@@ -138,7 +146,7 @@ func requireFTSMigration(ctx context.Context, database *sql.DB) error {
 	return nil
 }
 
-// RebuildFTS drops the FTS5 search tables and their triggers, recreates them from the
+// RebuildFTS drops the FTS5 search tables (lyrics included) and their triggers, recreates them from the
 // base tables, and verifies the result before committing. The tables are contentless,
 // so no user data is lost. It needs only the FTS migration, not a fully migrated
 // schema, because a corrupted DB often cannot run pending migrations.
@@ -160,11 +168,17 @@ func RebuildFTS(ctx context.Context, database *sql.DB) error {
 		}
 		stmts = append(stmts, "DROP TABLE IF EXISTS "+table)
 	}
+	// setupLyricsSearch recreates the lyrics index's triggers, and refills it once it is gone. The fetched
+	// lyrics it is filled from are a regular table, kept as they are.
+	stmts = append(stmts, "DROP TABLE IF EXISTS "+LyricsFTSTable)
 	stmts = append(stmts, ftsSchemaDDL...)
 	for _, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("rebuilding FTS schema: %w", err)
 		}
+	}
+	if err := setupLyricsSearch(ctx, tx); err != nil {
+		return fmt.Errorf("rebuilding FTS schema: %w", err)
 	}
 	if err := verifyFTS(ctx, tx); err != nil {
 		return fmt.Errorf("the rebuilt search index did not verify: %w", err)

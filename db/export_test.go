@@ -6,6 +6,7 @@ var (
 	FTSTables            = ftsTables
 	FTSTriggerSuffixes   = ftsTriggerSuffixes
 	FTSSearchMigration   = ftsSearchMigration
+	EnsureLyricsSearch   = ensureLyricsSearch
 	IsSchemaEmpty        = isSchemaEmpty
 	BackupPath           = backupPath
 	OptimizeDBAt         = optimizeAt
