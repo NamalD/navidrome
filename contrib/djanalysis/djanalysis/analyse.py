@@ -98,7 +98,9 @@ def band_energies(audio: np.ndarray, bars: list[tuple[float, float]]) -> np.ndar
         spec = np.abs(np.fft.rfft(seg * np.hanning(len(seg)))) ** 2
         freqs = np.fft.rfftfreq(len(seg), 1 / SR)
         for j, (lo, hi) in enumerate(BANDS):
-            out[i, j] = 10 * np.log10(spec[(freqs >= lo) & (freqs < hi)].mean() + 1e-12)
+            band = spec[(freqs >= lo) & (freqs < hi)]
+            # A bar too short to resolve the band has no bins in it.
+            out[i, j] = 10 * np.log10(band.mean() + 1e-12) if len(band) else -120
         out[i, -1] = 10 * np.log10(np.mean(seg ** 2) + 1e-12)
     return out
 

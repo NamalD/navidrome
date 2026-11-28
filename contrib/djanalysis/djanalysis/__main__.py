@@ -90,7 +90,8 @@ def run(args: argparse.Namespace) -> int:
         result["source"] = {k: song.get(k) for k in ("id", "size", "suffix", "artist", "title", "album", "duration")}
         out = CACHE / f"{song['id']}.json"
         tmp_out = out.with_suffix(".json.tmp")
-        tmp_out.write_text(json.dumps(result, separators=(",", ":")))
+        # allow_nan=False: NaN is not JSON, and Navidrome would refuse the upload.
+        tmp_out.write_text(json.dumps(result, separators=(",", ":"), allow_nan=False))
         tmp_out.replace(out)
         k = result["key"]
         print(f"[{n}/{len(todo)}] {label}: {result['bpm']:.1f} BPM{' (beatless)' if result['beatless'] else ''}, "
